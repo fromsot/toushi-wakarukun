@@ -1,0 +1,238 @@
+body{
+    font-family:sans-serif;
+    margin:0;
+    padding:20px;
+    background:#f2f2f2;
+}
+:root{
+    --bg-dark:#10131f;
+    --bg-card:#171b2a;
+    --gold:#f5c542;
+    --blue:#3b82f6;
+    --purple:#8b5cf6;
+    --green:#22c55e;
+    --red:#ef4444;
+    --text-main:#f8fafc;
+    --text-sub:#aab2c5;
+}
+
+body{
+    background:
+        radial-gradient(circle at top, rgba(245,197,66,0.18), transparent 32%),
+        linear-gradient(180deg,#0b0e18 0%,#141827 100%);
+    color:var(--text-main);
+}
+
+h1{
+    font-size:32px;
+    color:var(--gold);
+    text-shadow:0 0 14px rgba(245,197,66,0.45);
+}
+
+h2{
+    color:#ffe28a;
+    border-left:5px solid var(--gold);
+    padding-left:10px;
+}
+
+.card{
+    background:linear-gradient(180deg,#20263a,#171b2a);
+    color:var(--text-main);
+    border:1px solid rgba(255,255,255,0.08);
+    box-shadow:0 8px 24px rgba(0,0,0,0.35);
+}
+
+.card p,
+.card label{
+    color:var(--text-sub);
+}
+
+input,
+select,
+textarea{
+    background:#0f1320;
+    color:var(--text-main);
+    border:1px solid rgba(255,255,255,0.14);
+    border-radius:10px;
+}
+
+button{
+    background:linear-gradient(135deg,#2563eb,#7c3aed);
+    font-weight:bold;
+    box-shadow:0 4px 12px rgba(59,130,246,0.25);
+}
+
+button:hover{
+    filter:brightness(1.12);
+    transform:translateY(-1px);
+}
+
+.menu-card{
+    background:linear-gradient(160deg,#20263a,#111522);
+    border:1px solid rgba(245,197,66,0.35);
+    border-radius:22px;
+    padding:26px 14px;
+    text-align:center;
+    cursor:pointer;
+    box-shadow:0 8px 20px rgba(0,0,0,0.35);
+    transition:0.2s;
+}
+
+.menu-card:hover{
+    transform:translateY(-4px) scale(1.02);
+    box-shadow:0 0 20px rgba(245,197,66,0.18);
+}
+
+.menu-icon{
+    font-size:42px;
+    margin-bottom:10px;
+}
+
+.menu-title{
+    font-size:17px;
+    font-weight:bold;
+    color:var(--text-main);
+}
+
+#totalMedalAsset{
+    color:var(--gold);
+    text-shadow:0 0 18px rgba(245,197,66,0.45);
+}
+
+.profit{
+    color:#4ade80;
+    text-shadow:0 0 8px rgba(34,197,94,0.35);
+}
+
+.loss{
+    color:#fb7185;
+    text-shadow:0 0 8px rgba(239,68,68,0.35);
+}
+/* ==============================
+   小役カウンター タイルUI
+============================== */
+
+#counterArea{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+    margin-top:18px;
+}
+
+.counter-tile{
+    background:linear-gradient(160deg,#20263a,#111522);
+    border:1px solid rgba(245,197,66,0.28);
+    border-radius:22px;
+    padding:18px 10px;
+    text-align:center;
+    box-shadow:
+        0 8px 20px rgba(0,0,0,0.35),
+        inset 0 0 18px rgba(255,255,255,0.03);
+}
+
+.counter-color{
+    font-size:38px;
+    line-height:1;
+    margin-bottom:8px;
+}
+
+.counter-name{
+    font-size:15px;
+    font-weight:bold;
+    min-height:22px;
+}
+
+.counter-count{
+    font-size:34px;
+    font-weight:bold;
+    color:var(--gold);
+    margin-top:10px;
+    text-shadow:0 0 14px rgba(245,197,66,0.4);
+}
+
+.counter-rate{
+    font-size:14px;
+    color:var(--text-sub);
+    margin-top:4px;
+}
+
+.counter-buttons{
+    display:flex;
+    justify-content:center;
+    gap:8px;
+    margin-top:12px;
+}
+
+.counter-buttons button{
+    width:44px;
+    height:38px;
+    padding:0;
+    border-radius:12px;
+    font-size:20px;
+}
+
+.counter-plus{
+    background:linear-gradient(135deg,#2563eb,#7c3aed);
+}
+
+.counter-minus{
+    background:linear-gradient(135deg,#4b5563,#111827);
+}
+/* ==============================
+   下部固定ナビゲーション
+============================== */
+
+body{
+    padding-bottom:96px;
+}
+
+.bottom-nav{
+    position:fixed;
+    left:50%;
+    bottom:14px;
+    transform:translateX(-50%);
+    width:calc(100% - 28px);
+    max-width:520px;
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:6px;
+    padding:8px;
+    background:rgba(15,19,32,0.92);
+    backdrop-filter:blur(14px);
+    border:1px solid rgba(245,197,66,0.3);
+    border-radius:24px;
+    box-shadow:
+        0 10px 30px rgba(0,0,0,0.45),
+        0 0 18px rgba(245,197,66,0.12);
+    z-index:9999;
+}
+
+.bottom-nav-item{
+    width:100%;
+    padding:8px 4px;
+    background:transparent;
+    box-shadow:none;
+    border-radius:16px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:3px;
+    color:var(--text-sub);
+}
+
+.bottom-nav-item:hover{
+    background:rgba(245,197,66,0.12);
+    transform:none;
+    filter:none;
+}
+
+.bottom-nav-icon{
+    font-size:22px;
+    line-height:1;
+}
+
+.bottom-nav-label{
+    font-size:11px;
+    font-weight:bold;
+    white-space:nowrap;
+}

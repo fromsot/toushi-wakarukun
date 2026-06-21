@@ -1,0 +1,1823 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<title>投資わカール君</title>
+
+<link rel="stylesheet" href="style.css">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+
+<body>
+
+<div class="container">
+
+
+<h1>投資わカール君</h1>
+
+<div class="card">
+<h2>ホーム</h2>
+
+<p style="font-size:14px;color:#666;">
+総資産（全店舗の貯メダル換金額）
+</p>
+
+<p style="font-size:40px;font-weight:bold;margin:10px 0;">
+¥<span id="totalMedalAsset">0</span>
+</p>
+
+<div class="home-grid">
+
+    <div
+    class="menu-card"
+    onclick="showSection('playSection')"
+    >
+        <div class="menu-icon">🎰</div>
+        <div class="menu-title">
+            稼働開始
+        </div>
+    </div>
+
+    <div
+    class="menu-card"
+    onclick="showSection('counterSection')"
+    >
+        <div class="menu-icon">🔢</div>
+        <div class="menu-title">
+            小役カウンター
+        </div>
+    </div>
+
+    <div
+    class="menu-card"
+    onclick="showSection('shopSection')"
+    >
+        <div class="menu-icon">🏪</div>
+        <div class="menu-title">
+            店舗登録
+        </div>
+    </div>
+
+    <div
+    class="menu-card"
+    onclick="showSection('analysisSection')"
+    >
+        <div class="menu-icon">📈</div>
+        <div class="menu-title">
+            収支を見る
+        </div>
+    </div>
+
+</div>
+
+<p style="margin-top:20px;">
+今日の収支：
+<span id="todayProfitCard">0</span>円
+</p>
+
+<p>
+今月の収支：
+<span id="monthProfitCard">0</span>円
+</p>
+</div>
+
+<div class="card" id="shopSection" style="display:none;">
+<h2>店舗管理</h2>
+
+<input type="text" id="shopName" placeholder="店舗名（必須）">
+
+<input 
+type="number"
+id="shopMedal"
+placeholder="持ちメダル"
+min="0"
+>
+
+<label>レート</label>
+<select id="shopRate">
+    <option value="2">2円</option>
+    <option value="2.5">2.5円</option>
+    <option value="5">5円</option>
+    <option value="10">10円</option>
+    <option value="20" selected>20円</option>
+</select>
+
+<br><br>
+
+<label>交換タイプ</label>
+<select id="exchangeType" onchange="toggleExchangeInputs()">
+    <option value="equal">等価</option>
+    <option value="nonEqual">非等価</option>
+</select>
+
+<div id="exchangeInputs" style="display:none; margin-top:16px;">
+
+<select id="exchangePreset">
+    <option value="46-52">46枚貸し / 52枚交換</option>
+    <option value="50-56">50枚貸し / 56枚交換</option>
+    <option value="custom">その他（手入力）</option>
+</select>
+
+<div id="customExchangeInputs" style="display:none; margin-top:12px;">
+
+<input 
+type="number"
+id="rentalValue"
+placeholder="貸出枚数"
+>
+
+<input 
+type="number"
+id="exchangeValue"
+placeholder="交換枚数"
+>
+
+</div>
+
+</div>
+<label>最小景品額</label>
+<select id="prizeUnit">
+    <option value="unknown">不明</option>
+    <option value="200">200円</option>
+    <option value="500">500円</option>
+    <option value="1000">1000円</option>
+</select>
+
+<p style="
+font-size:12px;
+color:#666;
+margin-top:4px;
+margin-bottom:16px;
+">
+※不明の場合は200円で計算します
+</p>
+
+<br><br>
+
+<label>再プレイ上限</label>
+<select id="replayType" onchange="toggleReplayInput()">
+    <option value="none">なし</option>
+    <option value="limit">あり</option>
+</select>
+
+<div id="replayInputArea" style="display:none; margin-top:12px;">
+<input 
+type="number"
+id="replayLimit"
+placeholder="再プレイ上限枚数"
+min="0"
+>
+</div>
+
+<br>
+
+<button onclick="addShop()">店舗登録</button>
+
+<table>
+<thead>
+<tr>
+<th>店舗名</th>
+<th>持ちメダル</th>
+<th>レート</th>
+<th>交換</th>
+<th>最小景品</th>
+<th>再プレイ</th>
+</tr>
+</thead>
+<tbody id="shopList"></tbody>
+</table>
+</div>
+
+<div class="card" id="playSection" style="display:none;">
+<h2>実戦モード</h2>
+
+<select id="playShop">
+    <option value="">店舗を選択</option>
+</select>
+
+<input 
+type="text"
+id="playMachine"
+placeholder="機種名"
+>
+
+<button onclick="startPlay()">
+稼働開始
+</button>
+
+<div id="currentPlay" style="display:none; margin-top:20px;">
+
+<h3>現在稼働中</h3>
+
+<p>店舗：<span id="currentShop">-</span></p>
+<p>機種：<span id="currentMachine">-</span></p>
+<p>使用メダル：<span id="currentUsedMedal">0</span>枚</p>
+<p>現金投資：<span id="currentCash">0</span>円</p>
+
+<div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
+
+<button 
+style="width:auto;"
+onclick="addMedalInvestment(46)"
+>
+46枚投資
+</button>
+
+<button 
+style="width:auto;"
+onclick="addMedalInvestment(50)"
+>
+50枚投資
+</button>
+
+<button 
+style="width:auto;"
+onclick="addCashInvestment()"
+>
+1000円現金
+</button>
+
+</div>
+
+<input 
+type="number"
+id="playRecovery"
+placeholder="回収枚数"
+min="0"
+style="margin-top:20px;"
+>
+
+<button 
+style="margin-top:12px; background:green;"
+onclick="finishPlay()"
+>
+稼働終了
+</button>
+
+</div>
+</div>
+
+<div class="card">
+<h2>稼働記録入力</h2>
+
+<input type="date" id="date">
+
+<select id="shop">
+    <option value="">店舗を選択</option>
+    <option value="未登録店舗">未登録店舗（単発用）</option>
+</select>
+
+<input type="text" id="machine" placeholder="機種名">
+
+<input 
+type="number"
+id="usedMedal"
+placeholder="使用メダル"
+min="0"
+step="1"
+>
+
+<input 
+type="number"
+id="cashInvestment"
+placeholder="現金投資（円）"
+min="0"
+step="1000"
+>
+
+<input 
+type="number"
+id="recoveryMedal"
+placeholder="回収メダル"
+min="0"
+step="1"
+>
+
+<input 
+type="number" 
+id="hours" 
+placeholder="稼働時間(h)"
+min="0"
+step="0.5"
+>
+
+<input 
+type="number" 
+id="expected" 
+placeholder="期待値（空欄可）"
+step="500"
+>
+
+<button onclick="addRecord()">記録する</button>
+</div>
+
+<div class="card" id="counterSection" style="display:none;">
+<h2>小役カウンター</h2>
+
+<input
+type="text"
+id="profileName"
+placeholder="プロファイル名（例：モンキー設定狙い）"
+>
+
+<div style="display:flex;gap:8px;flex-wrap:wrap;">
+
+<select id="counterColor">
+    <option value="🟨">🟨</option>
+    <option value="🟪">🟪</option>
+    <option value="🟩">🟩</option>
+    <option value="🟥">🟥</option>
+    <option value="🟦">🟦</option>
+    <option value="⬜️">⬜️</option>
+</select>
+
+<input
+type="text"
+id="counterItemName"
+placeholder="項目名（5枚役など）"
+>
+
+<button
+style="width:auto;"
+onclick="addCounterItem()"
+>
+項目追加
+</button>
+
+</div>
+
+<div id="profileItems"></div>
+
+<button onclick="saveCounterProfile()">
+プロファイル保存
+</button>
+
+<hr>
+
+<select
+id="profileSelect"
+onchange="changeCounterProfile()"
+></select>
+
+<input
+type="number"
+id="counterStartGame"
+placeholder="開始G数"
+min="0"
+oninput="renderCounter()"
+>
+
+<input
+type="number"
+id="counterCurrentGame"
+placeholder="現在G数"
+min="0"
+oninput="renderCounter()"
+>
+
+<p>
+自己G数：
+<span id="counterSelfGame">0</span>G
+</p>
+
+<div id="counterArea"></div>
+
+<button
+style="background:red;margin-top:20px;"
+onclick="resetCounter()"
+>
+リセット
+</button>
+
+</div>
+
+<div class="card" id="analysisSection" style="display:none;">
+<h2>収支分析</h2>
+
+<p>総稼働回数：<span id="totalGames">0</span></p>
+
+<p>総収支：<span id="totalProfit">0</span></p>
+
+<p>総稼働時間：<span id="totalHours">0</span>h</p>
+
+<div style="display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
+
+<select 
+id="incomeTypeSelect"
+onchange="changeIncomeType()"
+style="padding:10px; border-radius:8px;"
+>
+    <option value="hour">時給</option>
+    <option value="day">日給</option>
+    <option value="week">週給</option>
+    <option value="month">月給</option>
+</select>
+
+<p style="margin:0; font-size:18px; font-weight:bold;">
+    <span id="incomeLabel">時給</span>：
+    <span id="incomeValue">0</span>円
+</p>
+
+</div>
+
+<p>総投資：<span id="totalInvestment">0</span></p>
+
+<p>総回収：<span id="totalRecovery">0</span></p>
+
+<p>回収率：<span id="recoveryRate">0</span>%</p>
+
+<p>最高勝ち額：<span id="bestWin">0</span></p>
+
+<p>最大負け額：<span id="worstLoss">0</span></p>
+</div>
+
+<div class="card">
+<h2>店舗別分析</h2>
+
+<table>
+<thead>
+<tr>
+<th>店舗</th>
+<th>利益合計</th>
+<th>回収率</th>
+</tr>
+</thead>
+<tbody id="shopAnalysis"></tbody>
+</table>
+</div>
+
+<div class="card">
+<h2>機種別分析</h2>
+
+<table>
+<thead>
+<tr>
+<th>機種</th>
+<th>期待値合計</th>
+<th>実績合計</th>
+<th>乖離</th>
+</tr>
+</thead>
+<tbody id="machineAnalysis"></tbody>
+</table>
+ </div>
+
+<div class="card">
+
+<h2>累計収支グラフ</h2>
+
+<div style="
+display:flex;
+gap:10px;
+margin-bottom:16px;
+flex-wrap:wrap;
+">
+
+<button onclick="changeGraphPeriod('month')" style="width:auto;">
+1ヶ月
+</button>
+
+<button onclick="changeGraphPeriod('halfyear')" style="width:auto;">
+半年
+</button>
+
+<button onclick="changeGraphPeriod('year')" style="width:auto;">
+1年
+</button>
+
+<button onclick="changeGraphPeriod('all')" style="width:auto;">
+全期間
+</button>
+
+</div>
+
+<canvas id="profitChart"></canvas>
+
+</div>
+
+<div class="card">
+<h2>稼働履歴</h2>
+
+<table>
+<thead>
+<tr>
+<th>日付</th>
+<th>店舗</th>
+<th>機種</th>
+<th>使用枚数</th>
+<th>現金投資</th>
+<th>回収枚数</th>
+<th>交換額</th>
+<th>余り枚数</th>
+<th>収支</th>
+<th>時間</th>
+<th>期待値</th>
+<th>削除</th>
+</tr>
+</thead>
+<tbody id="history"></tbody>
+</table>
+</div>
+
+</div>
+
+<nav class="bottom-nav">
+
+    <button class="bottom-nav-item" onclick="showHome()">
+        <span class="bottom-nav-icon">🏠</span>
+        <span class="bottom-nav-label">ホーム</span>
+    </button>
+
+    <button class="bottom-nav-item" onclick="showSection('playSection')">
+        <span class="bottom-nav-icon">🎰</span>
+        <span class="bottom-nav-label">実戦</span>
+    </button>
+
+    <button class="bottom-nav-item" onclick="showSection('counterSection')">
+        <span class="bottom-nav-icon">🔢</span>
+        <span class="bottom-nav-label">カウンター</span>
+    </button>
+
+    <button class="bottom-nav-item" onclick="showSection('analysisSection')">
+        <span class="bottom-nav-icon">📈</span>
+        <span class="bottom-nav-label">分析</span>
+    </button>
+
+</nav>
+
+<script>
+
+
+let records = JSON.parse(localStorage.getItem("records")) || [];
+
+let shops = JSON.parse(localStorage.getItem("shops")) || [];
+
+let incomeType = "hour";
+
+let graphPeriod = "all";
+
+let profitChart = null;
+let currentPlayData = null;
+let counterProfiles =
+JSON.parse(
+    localStorage.getItem("counterProfiles")
+) || [];
+
+let activeCounterProfile =
+Number(
+    localStorage.getItem("activeCounterProfile")
+) || 0;
+
+let editingProfileItems = [];
+
+let counterData =
+JSON.parse(
+    localStorage.getItem("counterData")
+) || {};
+function saveData(){
+
+    localStorage.setItem(
+        "records",
+        JSON.stringify(records)
+    );
+
+    localStorage.setItem(
+        "shops",
+        JSON.stringify(shops)
+    );
+}
+
+function addRecord(){
+
+    const date = document.getElementById("date").value;
+    const shop = document.getElementById("shop").value;
+    const machine = document.getElementById("machine").value;
+
+    const usedMedal = Number(
+        document.getElementById("usedMedal").value
+    );
+
+    const cashInvestment = Number(
+        document.getElementById("cashInvestment").value
+    );
+
+    const recoveryMedal = Number(
+        document.getElementById("recoveryMedal").value
+    );
+
+    const hours = Number(document.getElementById("hours").value);
+
+    const expectedValue = document.getElementById("expected").value;
+
+    const expected = expectedValue === ""
+        ? null
+        : Number(expectedValue);
+
+    if(!date || !shop || !machine){
+        alert("未入力項目があります");
+        return;
+    }
+
+    const selectedShop = shops.find(
+        s => s.name === shop
+    );
+
+    let payoutYen = 0;
+    let remainderMedal = 0;
+
+    if(selectedShop && selectedShop.exchange){
+
+        const rawPayout =
+            (recoveryMedal / selectedShop.exchange)
+            * 1000;
+
+        const prizeUnit = selectedShop.prizeUnit || 200;
+
+        payoutYen =
+            Math.floor(
+                rawPayout / prizeUnit
+            )
+            * prizeUnit;
+
+        const remainderYen =
+            rawPayout - payoutYen;
+
+        remainderMedal =
+            Math.floor(
+                remainderYen
+                / 1000
+                * selectedShop.exchange
+            );
+    }
+
+    else{
+        payoutYen = recoveryMedal * 20;
+    }
+
+    let usedMedalValue = 0;
+
+    if(selectedShop && selectedShop.rental){
+
+        const prizeUnit = selectedShop.prizeUnit || 200;
+
+        const rawUsedMedalValue =
+            (usedMedal / selectedShop.rental)
+            * 1000;
+
+        usedMedalValue =
+            Math.floor(
+                rawUsedMedalValue / prizeUnit
+            ) * prizeUnit;
+    }
+
+    else{
+        usedMedalValue = usedMedal * 20;
+    }
+
+    const profit = Math.floor(
+        payoutYen
+        - cashInvestment
+        - usedMedalValue
+    );
+
+
+
+    records.push({
+        date,
+        shop,
+        machine,
+        usedMedal,
+        cashInvestment,
+        recoveryMedal,
+        usedMedalValue,
+        payoutYen,
+        remainderMedal,
+        profit,
+        hours,
+        expected
+    });
+
+    saveData();
+
+    render();
+
+    document.querySelectorAll("input").forEach(input=>{
+        if(input.type !== "date"){
+            input.value = "";
+        }
+    });
+}
+function render(){
+
+    renderAssetSummary();
+
+    renderHistory();
+
+    renderSummary();
+
+    renderShopAnalysis();
+
+    renderMachineAnalysis();
+
+    renderChart();
+
+    renderShopList();
+
+    renderPlayShopSelect();
+
+    renderProfileItems();
+
+    renderProfileSelect();
+
+    renderCounter();
+}
+
+function renderHistory(){
+
+    const history = document.getElementById("history");
+
+    history.innerHTML = "";
+
+    records.forEach((record,index)=>{
+
+        history.innerHTML += `
+        <tr>
+            <td>${record.date}</td>
+            <td>${record.shop}</td>
+            <td>${record.machine}</td>
+           <td>${record.usedMedal}</td>
+<td>${record.cashInvestment}</td>
+<td>${record.recoveryMedal}</td>
+<td>${Math.floor(record.payoutYen)}</td>
+<td>-</td>
+            <td class="${record.profit >= 0 ? 'profit' : 'loss'}">
+                ${Math.floor(record.profit)}
+            </td>
+            <td>${record.hours}</td>
+            <td>${record.expected ?? "-"}</td>
+            <td>
+        <button 
+        onclick="deleteRecord(${index})"
+        style="
+        width:auto;
+        padding:6px 10px;
+        background:red;
+        ">
+            削除
+        </button>
+    </td>
+        </tr>
+        `;
+    });
+}
+
+function renderSummary(){
+
+    const totalGames = records.length;
+
+    const totalProfit = records.reduce((sum,r)=>sum+r.profit,0);
+
+    const totalHours = records.reduce((sum,r)=>sum+r.hours,0);
+
+    const now = new Date();
+
+    const today =
+        now.getFullYear() + "-" +
+        String(now.getMonth() + 1).padStart(2,"0") + "-" +
+        String(now.getDate()).padStart(2,"0");
+
+    const todayRecords = records.filter(r => r.date === today);
+
+    const todayProfit = todayRecords.reduce(
+        (sum,r)=>sum+r.profit,
+        0
+    );
+
+    const todayHours = todayRecords.reduce(
+        (sum,r)=>sum+r.hours,
+        0
+    );
+
+    const averageHourly = todayHours > 0
+        ? Math.round(todayProfit / todayHours)
+        : 0;
+
+    const averageDaily = todayProfit;
+
+    const day = now.getDay();
+
+    const monday = new Date(now);
+
+    monday.setDate(
+        now.getDate() - (day === 0 ? 6 : day - 1)
+    );
+
+    monday.setHours(0,0,0,0);
+
+    const weeklyRecords = records.filter(r => {
+
+        const recordDate = new Date(r.date);
+
+        return recordDate >= monday;
+    });
+
+    const averageWeekly = weeklyRecords.reduce(
+        (sum,r)=>sum+r.profit,
+        0
+    );
+
+    const monthStart = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        1
+    );
+
+    const monthlyRecords = records.filter(r => {
+
+        const recordDate = new Date(r.date);
+
+        return recordDate >= monthStart;
+    });
+
+    const averageMonthly = monthlyRecords.reduce(
+        (sum,r)=>sum+r.profit,
+        0
+    );
+
+    const bestWin = records.length
+        ? Math.max(...records.map(r=>r.profit))
+        : 0;
+
+    const worstLoss = records.length
+        ? Math.min(...records.map(r=>r.profit))
+        : 0;
+
+    const totalInvestment = records.reduce(
+        (sum,r)=>sum+r.cashInvestment,
+        0
+    );
+
+    const totalRecovery = records.reduce(
+        (sum,r)=>sum+r.payoutYen,
+        0
+    );
+
+    const recoveryRate = totalInvestment > 0
+        ? ((totalRecovery / totalInvestment) * 100).toFixed(1)
+        : 0;
+
+    document.getElementById("totalGames").innerText = totalGames;
+
+    document.getElementById("totalProfit").innerText = totalProfit;
+
+    document.getElementById("totalHours").innerText = totalHours;
+
+    document.getElementById("totalInvestment").innerText = totalInvestment;
+
+    document.getElementById("totalRecovery").innerText = totalRecovery;
+    document.getElementById("bestWin").innerText = bestWin;
+    document.getElementById("worstLoss").innerText = worstLoss;
+    document.getElementById("recoveryRate").innerText = recoveryRate;
+
+    if(incomeType === "hour"){
+        document.getElementById("incomeLabel").innerText = "時給";
+        document.getElementById("incomeValue").innerText = averageHourly;
+    }
+    if(incomeType === "day"){
+        document.getElementById("incomeLabel").innerText = "日給";
+        document.getElementById("incomeValue").innerText = averageDaily;
+    }
+    if(incomeType === "week"){
+        document.getElementById("incomeLabel").innerText = "週給";
+        document.getElementById("incomeValue").innerText = averageWeekly;
+    }
+    if(incomeType === "month"){
+        document.getElementById("incomeLabel").innerText = "月給";
+        document.getElementById("incomeValue").innerText = averageMonthly;
+    }
+}
+
+function renderShopAnalysis(){
+
+    const shopMap = {};
+
+    records.forEach(r=>{
+
+        if(!shopMap[r.shop]){
+            shopMap[r.shop] = {
+    total:0,
+    investment:0,
+    recovery:0
+　　　　　　};
+        }
+
+        shopMap[r.shop].total += r.profit;
+        shopMap[r.shop].investment += r.cashInvestment;
+        shopMap[r.shop].recovery += r.payoutYen;
+    });
+
+    const tbody = document.getElementById("shopAnalysis");
+
+    tbody.innerHTML = "";
+
+    for(let shop in shopMap){
+
+        const data = shopMap[shop];
+
+        const recoveryRate = data.investment > 0
+    ? (
+        data.recovery / data.investment * 100
+    ).toFixed(1)
+    : 0;
+
+        tbody.innerHTML += `
+        <tr>
+            <td>${shop}</td>
+            <td>${data.total}</td>
+            <td>${recoveryRate}%</td>
+        </tr>
+        `;
+    }
+}
+
+function renderMachineAnalysis(){
+
+    const machineMap = {};
+
+    records.forEach(r=>{
+
+        if(!machineMap[r.machine]){
+            machineMap[r.machine] = {
+                expected:0,
+                actual:0
+            };
+        }
+
+        machineMap[r.machine].expected += r.expected || 0;
+
+        machineMap[r.machine].actual += r.profit;
+    });
+
+    const tbody = document.getElementById("machineAnalysis");
+
+    tbody.innerHTML = "";
+
+    for(let machine in machineMap){
+
+        const data = machineMap[machine];
+
+        const diff = data.actual - data.expected;
+
+        tbody.innerHTML += `
+        <tr>
+            <td>${machine}</td>
+            <td>
+                ${
+                    data.expected === 0
+                    ? "-"
+                    : data.expected
+                }
+            </td>
+            <td>${data.actual}</td>
+            <td>${diff}</td>
+        </tr>
+        `;
+    }
+}
+
+function toggleExchangeInputs(){
+
+    const exchangeType = document
+        .getElementById("exchangeType")
+        .value;
+
+    document.getElementById("exchangeInputs")
+        .style.display = exchangeType === "nonEqual"
+        ? "block"
+        : "none";
+}
+
+function toggleReplayInput(){
+
+    const replayType = document
+        .getElementById("replayType")
+        .value;
+
+    document.getElementById("replayInputArea")
+        .style.display = replayType === "limit"
+        ? "block"
+        : "none";
+}
+
+document.addEventListener("change",(e)=>{
+
+    if(e.target.id === "exchangePreset"){
+
+        document.getElementById(
+            "customExchangeInputs"
+        ).style.display = e.target.value === "custom"
+        ? "block"
+        : "none";
+    }
+});
+
+function addShop(){
+
+    const name = document
+        .getElementById("shopName")
+        .value;
+
+    const medal = Number(
+        document.getElementById("shopMedal").value
+    );
+
+    const rate = document
+        .getElementById("shopRate")
+        .value;
+
+    const exchangeType = document
+        .getElementById("exchangeType")
+        .value;
+
+    const exchangePreset = document
+        .getElementById("exchangePreset")
+        .value;
+
+    const replayType = document
+        .getElementById("replayType")
+        .value;
+
+    const replayLimit = Number(
+        document.getElementById("replayLimit").value
+    ) || 0;
+
+    const prizeUnitValue = document
+        .getElementById("prizeUnit")
+        .value;
+
+    const prizeUnit =
+        prizeUnitValue === "unknown"
+        ? 200
+        : Number(prizeUnitValue);
+
+    if(!name){
+        alert("店舗名を入力してください");
+        return;
+    }
+
+    let rental = null;
+    let exchange = null;
+
+    if(exchangeType === "nonEqual"){
+
+        if(exchangePreset === "46-52"){
+            rental = 46;
+            exchange = 52;
+        }
+
+        else if(exchangePreset === "50-56"){
+            rental = 50;
+            exchange = 56;
+        }
+
+        else{
+            rental = Number(
+                document.getElementById("rentalValue").value
+            );
+
+            exchange = Number(
+                document.getElementById("exchangeValue").value
+            );
+        }
+    }
+
+    shops.push({
+        name,
+        medal,
+        rate,
+        exchangeType,
+        rental,
+        exchange,
+        prizeUnit,
+        replayLimit:
+            replayType === "limit"
+            ? replayLimit
+            : null
+    });
+
+    saveData();
+
+    renderShopList();
+
+    document.getElementById("shopName").value = "";
+    document.getElementById("shopMedal").value = "";
+    document.getElementById("replayLimit").value = "";
+    document.getElementById("rentalValue").value = "";
+    document.getElementById("exchangeValue").value = "";
+}
+
+function renderShopList(){
+
+    const tbody = document
+        .getElementById("shopList");
+
+    tbody.innerHTML = "";
+
+    const shopSelect = document.getElementById("shop");
+
+    shopSelect.innerHTML = `
+    <option value="">店舗を選択</option>
+    <option value="未登録店舗">
+        未登録店舗（単発用）
+    </option>
+`;
+
+    shops.forEach(shop=>{
+
+        shopSelect.innerHTML += `
+            <option value="${shop.name}">
+                ${shop.name}
+            </option>
+        `;
+
+        let exchangeText = "等価";
+
+        if(shop.exchangeType === "nonEqual"){
+            exchangeText = `${shop.rental}枚貸 / ${shop.exchange}枚交換`;
+        }
+
+        tbody.innerHTML += `
+        <tr>
+            <td>${shop.name}</td>
+            <td>${shop.medal}</td>
+            <td>${shop.rate}円</td>
+            <td>${exchangeText}</td>
+            <td>${shop.prizeUnit ?? "200"}円</td>
+            <td>${shop.replayLimit ?? "なし"}</td>
+        </tr>
+        `;
+    });
+}
+
+function renderPlayShopSelect(){
+
+    const select = document.getElementById("playShop");
+
+    select.innerHTML = `
+        <option value="">店舗を選択</option>
+    `;
+
+    shops.forEach(shop=>{
+
+        select.innerHTML += `
+            <option value="${shop.name}">
+                ${shop.name}
+            </option>
+        `;
+    });
+}
+
+function startPlay(){
+
+    const shop = document.getElementById("playShop").value;
+
+    const machine = document.getElementById("playMachine").value;
+
+    if(!shop || !machine){
+        alert("店舗と機種を入力してください");
+        return;
+    }
+
+    currentPlayData = {
+        shop,
+        machine,
+        usedMedal:0,
+        cashInvestment:0
+    };
+
+    document.getElementById("currentPlay").style.display = "block";
+
+    updateCurrentPlayUI();
+}
+
+function updateCurrentPlayUI(){
+
+    if(!currentPlayData){
+        return;
+    }
+
+    document.getElementById("currentShop").innerText = currentPlayData.shop;
+
+    document.getElementById("currentMachine").innerText = currentPlayData.machine;
+
+    document.getElementById("currentUsedMedal").innerText = currentPlayData.usedMedal;
+
+    document.getElementById("currentCash").innerText = currentPlayData.cashInvestment;
+}
+
+function addMedalInvestment(amount){
+
+    if(!currentPlayData){
+        return;
+    }
+
+    const selectedShop = shops.find(
+        s => s.name === currentPlayData.shop
+    );
+
+    if(!selectedShop){
+        return;
+    }
+
+    if(!currentPlayData.replayUsed){
+        currentPlayData.replayUsed = 0;
+    }
+
+    const replayLimit = selectedShop.replayLimit ?? Infinity;
+
+    const remainingReplay =
+        replayLimit - currentPlayData.replayUsed;
+
+    let replayUse = 0;
+
+    if(remainingReplay > 0 && selectedShop.medal > 0){
+
+        replayUse = Math.min(
+            amount,
+            remainingReplay,
+            selectedShop.medal
+        );
+    }
+
+    const cashUse = amount - replayUse;
+
+    currentPlayData.usedMedal += replayUse;
+
+    currentPlayData.replayUsed += replayUse;
+
+    if(cashUse > 0){
+
+        const rental = selectedShop.rental || 50;
+
+        const cashNeeded = Math.ceil(
+            (cashUse / rental) * 1000 / 1000
+        ) * 1000;
+
+        currentPlayData.cashInvestment += cashNeeded;
+    }
+
+    updateCurrentPlayUI();
+}
+
+function addCashInvestment(){
+
+    if(!currentPlayData){
+        return;
+    }
+
+    currentPlayData.cashInvestment += 1000;
+
+    updateCurrentPlayUI();
+}
+
+function finishPlay(){
+
+    if(!currentPlayData){
+        return;
+    }
+
+    const recovery = Number(
+        document.getElementById("playRecovery").value
+    );
+
+    const selectedShop = shops.find(
+        s => s.name === currentPlayData.shop
+    );
+
+    if(selectedShop){
+
+        selectedShop.medal =
+            selectedShop.medal
+            - (currentPlayData.replayUsed || 0)
+            + recovery;
+
+        if(selectedShop.medal < 0){
+            selectedShop.medal = 0;
+        }
+
+        saveData();
+
+        renderShopList();
+        renderAssetSummary();
+    }
+
+    document.getElementById("date").value = new Date()
+        .toISOString()
+        .split("T")[0];
+
+    document.getElementById("shop").value = currentPlayData.shop;
+
+    document.getElementById("machine").value = currentPlayData.machine;
+
+    document.getElementById("usedMedal").value = currentPlayData.replayUsed || 0;
+
+    document.getElementById("cashInvestment").value = currentPlayData.cashInvestment;
+
+    document.getElementById("recoveryMedal").value = recovery;
+
+    currentPlayData = null;
+
+    document.getElementById("currentPlay").style.display = "none";
+
+    addRecord();
+}
+
+function changeIncomeType(){
+
+    incomeType = document.getElementById("incomeTypeSelect").value;
+
+    renderSummary();
+}
+
+function changeGraphPeriod(period){
+
+    graphPeriod = period;
+
+    renderChart();
+}
+
+function renderChart(){
+
+    const sortedRecords = [...records].sort((a,b)=>
+        new Date(a.date) - new Date(b.date)
+    );
+
+    let filteredRecords = sortedRecords;
+
+    const now = new Date();
+
+    if(graphPeriod === "month"){
+
+        const target = new Date();
+
+        target.setMonth(now.getMonth() - 1);
+
+        filteredRecords = sortedRecords.filter(r=>
+            new Date(r.date) >= target
+        );
+    }
+
+    if(graphPeriod === "halfyear"){
+
+        const target = new Date();
+
+        target.setMonth(now.getMonth() - 6);
+
+        filteredRecords = sortedRecords.filter(r=>
+            new Date(r.date) >= target
+        );
+    }
+
+    if(graphPeriod === "year"){
+
+        const target = new Date();
+
+        target.setFullYear(now.getFullYear() - 1);
+
+        filteredRecords = sortedRecords.filter(r=>
+            new Date(r.date) >= target
+        );
+    }
+
+    let cumulative = 0;
+
+    const labels = [];
+
+    const data = [];
+
+    filteredRecords.forEach(r=>{
+
+        cumulative += r.profit;
+
+        labels.push(r.date);
+
+        data.push(cumulative);
+    });
+
+    const ctx = document
+        .getElementById("profitChart")
+        .getContext("2d");
+
+    if(profitChart){
+        profitChart.destroy();
+    }
+
+    profitChart = new Chart(ctx,{
+
+        type:"line",
+
+        data:{
+            labels:labels,
+
+            datasets:[{
+                label:"累計収支",
+
+                data:data,
+
+                tension:0.2
+            }]
+        },
+
+        options:{
+            responsive:true,
+
+            plugins:{
+                legend:{
+                    display:false
+                }
+            }
+        }
+    });
+}
+
+function renderAssetSummary(){
+
+    let totalAsset = 0;
+
+    shops.forEach(shop=>{
+
+        if(!shop.exchange){
+            return;
+        }
+
+        const prizeUnit = shop.prizeUnit || 200;
+
+        const rawValue =
+            (shop.medal / shop.exchange) * 1000;
+
+        totalAsset +=
+            Math.floor(rawValue / prizeUnit) * prizeUnit;
+    });
+
+    document.getElementById('totalMedalAsset').innerText =
+        totalAsset.toLocaleString();
+
+    const now = new Date();
+
+    const today =
+        now.getFullYear() + '-' +
+        String(now.getMonth()+1).padStart(2,'0') + '-' +
+        String(now.getDate()).padStart(2,'0');
+
+    document.getElementById('todayProfitCard').innerText =
+        records
+        .filter(r=>r.date===today)
+        .reduce((s,r)=>s+r.profit,0)
+        .toLocaleString();
+
+    const monthStart = new Date(now.getFullYear(),now.getMonth(),1);
+
+    document.getElementById('monthProfitCard').innerText =
+        records
+        .filter(r=>new Date(r.date)>=monthStart)
+        .reduce((s,r)=>s+r.profit,0)
+        .toLocaleString();
+}
+function addCounterItem(){
+
+    const color = document.getElementById("counterColor").value;
+
+    const name = document.getElementById("counterItemName").value.trim();
+
+    if(!name){
+        alert("項目名を入力してください");
+        return;
+    }
+
+    editingProfileItems.push({
+        color,
+        name
+    });
+
+    document.getElementById("counterItemName").value = "";
+
+    renderProfileItems();
+}
+
+function renderProfileItems(){
+
+    const area = document.getElementById("profileItems");
+
+    if(!area){
+        return;
+    }
+
+    area.innerHTML = "";
+
+    editingProfileItems.forEach((item,index)=>{
+
+        area.innerHTML += `
+        <div style="
+            display:flex;
+            align-items:center;
+            gap:8px;
+            margin-bottom:8px;
+        ">
+            <span>${item.color} ${item.name}</span>
+
+            <button
+            style="width:auto;background:red;padding:6px 10px;"
+            onclick="removeCounterItem(${index})"
+            >
+            削除
+            </button>
+        </div>
+        `;
+    });
+}
+
+function removeCounterItem(index){
+
+    editingProfileItems.splice(index,1);
+
+    renderProfileItems();
+}
+
+function saveCounterProfile(){
+
+    const name = document.getElementById("profileName").value.trim();
+
+    if(!name || editingProfileItems.length === 0){
+        alert("プロファイル名と項目を入力してください");
+        return;
+    }
+
+    counterProfiles.push({
+        name,
+        items:[...editingProfileItems]
+    });
+
+    activeCounterProfile = counterProfiles.length - 1;
+
+    localStorage.setItem(
+        "counterProfiles",
+        JSON.stringify(counterProfiles)
+    );
+
+    localStorage.setItem(
+        "activeCounterProfile",
+        activeCounterProfile
+    );
+
+    editingProfileItems = [];
+
+    document.getElementById("profileName").value = "";
+
+    renderProfileItems();
+
+    renderProfileSelect();
+
+    renderCounter();
+}
+
+function renderProfileSelect(){
+
+    const select = document.getElementById("profileSelect");
+
+    if(!select){
+        return;
+    }
+
+    if(counterProfiles.length === 0){
+        select.innerHTML = `
+            <option value="">プロファイル未作成</option>
+        `;
+        return;
+    }
+
+    select.innerHTML = "";
+
+    counterProfiles.forEach((profile,index)=>{
+
+        select.innerHTML += `
+            <option value="${index}">
+                ${profile.name}
+            </option>
+        `;
+    });
+
+    select.value = activeCounterProfile;
+}
+
+function changeCounterProfile(){
+
+    activeCounterProfile = Number(
+        document.getElementById("profileSelect").value
+    );
+
+    localStorage.setItem(
+        "activeCounterProfile",
+        activeCounterProfile
+    );
+
+    renderCounter();
+}
+
+function changeCounter(item,value){
+
+    if(!counterData[item]){
+        counterData[item] = 0;
+    }
+
+    counterData[item] += value;
+
+    if(counterData[item] < 0){
+        counterData[item] = 0;
+    }
+
+    localStorage.setItem(
+        "counterData",
+        JSON.stringify(counterData)
+    );
+
+    renderCounter();
+}
+
+function renderCounter(){
+
+    const area = document.getElementById("counterArea");
+
+    if(!area){
+        return;
+    }
+
+    const startGame =
+Number(
+    document.getElementById("counterStartGame")?.value
+) || 0;
+
+const currentGame =
+Number(
+    document.getElementById("counterCurrentGame")?.value
+) || 0;
+
+const totalGame =
+Math.max(
+    currentGame - startGame,
+    0
+);
+
+const selfGameText =
+document.getElementById("counterSelfGame");
+
+if(selfGameText){
+    selfGameText.innerText = totalGame;
+}
+
+    area.innerHTML = "";
+
+    const profile = counterProfiles[activeCounterProfile];
+
+    if(!profile){
+        area.innerHTML = "<p>先にカウンタープロファイルを作成してください。</p>";
+        return;
+    }
+
+    profile.items.forEach(item=>{
+
+        const key = item.name;
+
+        const count = counterData[key] || 0;
+
+        let probability = "-";
+
+        if(totalGame > 0 && count > 0){
+
+            probability =
+            "1/" +
+            (totalGame / count).toFixed(1);
+        }
+
+       area.innerHTML += `
+        <div class="counter-tile">
+
+            <div class="counter-color">
+                ${item.color}
+            </div>
+
+            <div class="counter-name">
+                ${item.name}
+            </div>
+
+            <div class="counter-count">
+                ${count}
+            </div>
+
+            <div class="counter-rate">
+                ${probability}
+            </div>
+
+            <div class="counter-buttons">
+                <button
+                class="counter-plus"
+                onclick="changeCounter('${key}',1)">
+                ＋
+                </button>
+
+                <button
+                class="counter-minus"
+                onclick="changeCounter('${key}',-1)">
+                －
+                </button>
+            </div>
+
+        </div>
+        `;
+    });
+}
+
+function resetCounter(){
+
+    if(!confirm("小役カウンターをリセットしますか？")){
+        return;
+    }
+
+    counterData = {};
+
+    localStorage.setItem(
+        "counterData",
+        JSON.stringify(counterData)
+    );
+
+document.getElementById(
+    "counterStartGame"
+).value = "";
+
+document.getElementById(
+    "counterCurrentGame"
+).value = "";
+
+document.getElementById(
+    "counterSelfGame"
+).innerText = "0";
+
+    renderCounter();
+}
+function showHome(){
+
+    const sections = [
+        'playSection',
+        'shopSection',
+        'analysisSection',
+        'counterSection'
+    ];
+
+    sections.forEach(id=>{
+
+        const el = document.getElementById(id);
+
+        if(el){
+            el.style.display = 'none';
+        }
+    });
+
+    window.scrollTo({
+        top:0,
+        behavior:'smooth'
+    });
+}
+
+function showSection(sectionId){
+
+    const sections = [
+        'playSection',
+        'shopSection',
+        'analysisSection',
+        'counterSection'
+    ];
+
+    sections.forEach(id=>{
+
+        const el = document.getElementById(id);
+
+        if(el){
+            el.style.display = 'none';
+        }
+    });
+
+    const target = document.getElementById(sectionId);
+
+    if(target){
+        target.style.display = 'block';
+        target.scrollIntoView({behavior:'smooth'});
+    }
+}
+render();
+</script>
+
+</body>
+</html>
