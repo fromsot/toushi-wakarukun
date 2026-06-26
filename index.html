@@ -756,6 +756,19 @@ function render(){
     renderCounter();
 }
 
+function deleteRecord(index){
+
+    if(!confirm("この稼働履歴を削除しますか？")){
+        return;
+    }
+
+    records.splice(index,1);
+
+    saveData();
+
+    render();
+}
+
 function renderHistory(){
 
     const history = document.getElementById("history");
@@ -1464,7 +1477,6 @@ function renderChart(){
     });
 }
 
-}
 
 function getLocalDateString(date = new Date()){
 
