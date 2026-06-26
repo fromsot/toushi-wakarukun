@@ -236,3 +236,16 @@ body{
     font-weight:bold;
     white-space:nowrap;
 }
+
+.toggle-button{
+    background:linear-gradient(135deg,#f5c542,#b7791f);
+    color:#111522;
+    font-weight:bold;
+    margin-bottom:12px;
+}
+.toggle-button{
+    background:linear-gradient(135deg,#f5c542,#b7791f);
+    color:#111522;
+    font-weight:bold;
+    margin-bottom:12px;
+}

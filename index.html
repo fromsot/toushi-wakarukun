@@ -262,6 +262,12 @@ onclick="finishPlay()"
 </div>
 
 <div class="card">
+<button class="toggle-button" onclick="toggleManualRecord()">
+手動入力を開く / 閉じる
+</button>
+
+<div id="manualRecordArea" style="display:none;">
+
 <h2>稼働記録入力</h2>
 
 <input type="date" id="date">
@@ -313,6 +319,8 @@ step="500"
 >
 
 <button onclick="addRecord()">記録する</button>
+
+</div>
 </div>
 
 <div class="card" id="counterSection" style="display:none;">
@@ -578,6 +586,18 @@ let counterData =
 JSON.parse(
     localStorage.getItem("counterData")
 ) || {};
+
+function getActiveCounterKey(){
+
+    const profile = counterProfiles[activeCounterProfile];
+
+    if(!profile){
+        return null;
+    }
+
+    return `profile_${activeCounterProfile}_${profile.name}`;
+}
+
 function saveData(){
 
     localStorage.setItem(
@@ -1629,14 +1649,25 @@ function changeCounterProfile(){
 
 function changeCounter(item,value){
 
-    if(!counterData[item]){
-        counterData[item] = 0;
+    const profileKey = getActiveCounterKey();
+
+    if(!profileKey){
+        alert("先にプロファイルを作成してください");
+        return;
     }
 
-    counterData[item] += value;
+    if(!counterData[profileKey]){
+        counterData[profileKey] = {};
+    }
 
-    if(counterData[item] < 0){
-        counterData[item] = 0;
+    if(!counterData[profileKey][item]){
+        counterData[profileKey][item] = 0;
+    }
+
+    counterData[profileKey][item] += value;
+
+    if(counterData[profileKey][item] < 0){
+        counterData[profileKey][item] = 0;
     }
 
     localStorage.setItem(
@@ -1687,11 +1718,17 @@ if(selfGameText){
         return;
     }
 
+        const profileKey = getActiveCounterKey();
+
+    if(!counterData[profileKey]){
+        counterData[profileKey] = {};
+    }
+
     profile.items.forEach(item=>{
 
         const key = item.name;
 
-        const count = counterData[key] || 0;
+        const count = counterData[profileKey][key] || 0;
 
         let probability = "-";
 
@@ -1742,31 +1779,49 @@ if(selfGameText){
 
 function resetCounter(){
 
-    if(!confirm("小役カウンターをリセットしますか？")){
+    if(!confirm("現在のプロファイルのカウントをリセットしますか？")){
         return;
     }
 
-    counterData = {};
+    const profileKey = getActiveCounterKey();
+
+    if(profileKey){
+        counterData[profileKey] = {};
+    }
 
     localStorage.setItem(
         "counterData",
         JSON.stringify(counterData)
     );
 
-document.getElementById(
-    "counterStartGame"
-).value = "";
+    document.getElementById(
+        "counterStartGame"
+    ).value = "";
 
-document.getElementById(
-    "counterCurrentGame"
-).value = "";
+    document.getElementById(
+        "counterCurrentGame"
+    ).value = "";
 
-document.getElementById(
-    "counterSelfGame"
-).innerText = "0";
+    document.getElementById(
+        "counterSelfGame"
+    ).innerText = "0";
 
     renderCounter();
 }
+function toggleManualRecord(){
+
+    const area = document.getElementById("manualRecordArea");
+
+    if(!area){
+        return;
+    }
+
+    area.style.display =
+        area.style.display === "none"
+        ? "block"
+        : "none";
+}
+
 function showHome(){
 
     const sections = [
