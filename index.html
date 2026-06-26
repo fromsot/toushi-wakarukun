@@ -1464,6 +1464,34 @@ function renderChart(){
     });
 }
 
+}
+
+function getLocalDateString(date = new Date()){
+
+    return date.getFullYear() + '-' +
+    String(date.getMonth() + 1).padStart(2,'0') + '-' +
+    String(date.getDate()).padStart(2,'0');
+}
+
+function normalizeDateString(value){
+
+    if(!value){
+        return '';
+    }
+
+    const date = new Date(value);
+
+    if(!isNaN(date.getTime())){
+        return getLocalDateString(date);
+    }
+
+    return String(value).slice(0,10);
+}
+
+function toNumber(value){
+    return Number(value) || 0;
+}
+
 function renderAssetSummary(){
 
     let totalAsset = 0;
