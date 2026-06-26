@@ -443,7 +443,7 @@ style="padding:10px; border-radius:8px;"
 <p>最大負け額：<span id="worstLoss">0</span></p>
 </div>
 
-<div class="card">
+<div class="card analysis-extra" id="shopAnalysisCard" style="display:none;">
 <h2>店舗別分析</h2>
 
 <table>
@@ -458,7 +458,7 @@ style="padding:10px; border-radius:8px;"
 </table>
 </div>
 
-<div class="card">
+<div class="card analysis-extra" id="machineAnalysisCard" style="display:none;">
 <h2>機種別分析</h2>
 
 <table>
@@ -474,7 +474,7 @@ style="padding:10px; border-radius:8px;"
 </table>
  </div>
 
-<div class="card">
+<div class="card analysis-extra" id="chartCard" style="display:none;">
 
 <h2>累計収支グラフ</h2>
 
@@ -507,7 +507,7 @@ flex-wrap:wrap;
 
 </div>
 
-<div class="card">
+<div class="card analysis-extra" id="historyCard" style="display:none;">
 <h2>稼働履歴</h2>
 
 <table>
@@ -1828,7 +1828,11 @@ function showHome(){
         'playSection',
         'shopSection',
         'analysisSection',
-        'counterSection'
+        'counterSection',
+        'shopAnalysisCard',
+        'machineAnalysisCard',
+        'chartCard',
+        'historyCard'
     ];
 
     sections.forEach(id=>{
@@ -1852,7 +1856,11 @@ function showSection(sectionId){
         'playSection',
         'shopSection',
         'analysisSection',
-        'counterSection'
+        'counterSection',
+        'shopAnalysisCard',
+        'machineAnalysisCard',
+        'chartCard',
+        'historyCard'
     ];
 
     sections.forEach(id=>{
@@ -1868,6 +1876,23 @@ function showSection(sectionId){
 
     if(target){
         target.style.display = 'block';
+
+        if(sectionId === 'analysisSection'){
+            [
+                'shopAnalysisCard',
+                'machineAnalysisCard',
+                'chartCard',
+                'historyCard'
+            ].forEach(id=>{
+
+                const el = document.getElementById(id);
+
+                if(el){
+                    el.style.display = 'block';
+                }
+            });
+        }
+
         target.scrollIntoView({behavior:'smooth'});
     }
 }
