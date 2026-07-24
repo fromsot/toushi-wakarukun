@@ -786,7 +786,7 @@ function renderHistory(){
 <td>${record.cashInvestment}</td>
 <td>${record.recoveryMedal}</td>
 <td>${Math.floor(record.payoutYen)}</td>
-<td>-</td>
+<td>${record.remainderMedal}</td>
             <td class="${record.profit >= 0 ? 'profit' : 'loss'}">
                 ${Math.floor(record.profit)}
             </td>
@@ -1528,16 +1528,13 @@ function renderAssetSummary(){
 
     const now = new Date();
 
-    const today =
-        now.getFullYear() + '-' +
-        String(now.getMonth()+1).padStart(2,'0') + '-' +
-        String(now.getDate()).padStart(2,'0');
+    const today = getLocalDateString(now);
 
-    document.getElementById('todayProfitCard').innerText =
-        records
-        .filter(r=>r.date===today)
-        .reduce((s,r)=>s+r.profit,0)
-        .toLocaleString();
+document.getElementById('todayProfitCard').innerText =
+    records
+    .filter(r => normalizeDateString(r.date) === today)
+    .reduce((s,r) => s + toNumber(r.profit),0)
+    .toLocaleString();
 
     const monthStart = new Date(now.getFullYear(),now.getMonth(),1);
 
