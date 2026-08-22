@@ -9,15 +9,69 @@
 <link rel="stylesheet" href="style.css">
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 </head>
 
 <body>
 
+<div id="authScreen" class="auth-screen">
+
+    <div class="auth-card">
+
+        <h1>収支ワカールくん</h1>
+
+        <input
+            type="email"
+            id="authEmail"
+            placeholder="メールアドレス"
+        >
+
+        <input
+            type="password"
+            id="authPassword"
+            placeholder="パスワード"
+        >
+
+        <button onclick="loginUser()">
+            ログイン
+        </button>
+
+        <button onclick="signupUser()">
+            新規登録
+        </button>
+
+        <button onclick="resetPassword()">
+            パスワードを再設定
+        </button>
+
+        <p id="authMessage"></p>
+
+        <div id="newPasswordArea" style="display:none;">
+            <input
+            type="password"
+            id="newPassword"
+            placeholder="新しいパスワード"
+            >
+            <button onclick="setNewPassword()">
+                新しいパスワードを保存
+            </button>
+        </div>
+
+    </div>
+
+</div>
+
+<div id="appScreen" style="display:none;">
+
 <div class="container">
 
 
 <h1>収支ワカールくん</h1>
+
+<button class="logout-button" onclick="logoutUser()">
+ログアウト
+</button>
 
 <div class="card">
 <h2>ホーム</h2>
@@ -72,6 +126,16 @@
         </div>
     </div>
 
+    <div
+    class="menu-card"
+    onclick="openShopManagement()"
+    >
+        <div class="menu-icon">🏬</div>
+        <div class="menu-title">
+            店舗管理
+        </div>
+    </div>
+
 </div>
 
 <p style="margin-top:20px;">
@@ -86,59 +150,62 @@
 </div>
 
 <div class="card" id="shopSection" style="display:none;">
-<h2>店舗管理</h2>
+<h2>店舗登録</h2>
+<p class="section-description">新しい店舗と最初の貯メダル残高を登録します。</p>
 
 <input type="text" id="shopName" placeholder="店舗名（必須）">
 
-<input 
+<input type="url" id="shopOfficialUrl" placeholder="公式サイトURL（空欄可）">
+
+<input type="url" id="shopPworldUrl" placeholder="P-WORLD URL（空欄可）">
+
+<input type="url" id="shopXUrl" placeholder="X URL（空欄可）">
+
+<input type="text" id="shopEventDays" placeholder="イベント日（例：毎月7日、ゾロ目）">
+
+<input type="text" id="shopResetTendency" placeholder="リセット傾向">
+
+<input type="text" id="shopCarryoverTendency" placeholder="据え置き傾向">
+
+<textarea id="shopMemo" placeholder="店舗メモ"></textarea>
+
+<input
 type="number"
 id="shopMedal"
-placeholder="持ちメダル"
+placeholder="現在の総貯メダル"
 min="0"
 >
 
-<label>レート</label>
-<select id="shopRate">
-    <option value="2">2円</option>
-    <option value="2.5">2.5円</option>
-    <option value="5">5円</option>
-    <option value="10">10円</option>
-    <option value="20" selected>20円</option>
-</select>
+<input
+type="number"
+id="shopRate"
+placeholder="レート（例：20）"
+min="0.01"
+step="0.01"
+>
 
-<br><br>
-
-<label>交換タイプ</label>
-<select id="exchangeType" onchange="toggleExchangeInputs()">
-    <option value="equal">等価</option>
-    <option value="nonEqual">非等価</option>
-</select>
-
-<div id="exchangeInputs" style="display:none; margin-top:16px;">
-
-<select id="exchangePreset">
-    <option value="46-52">46枚貸し / 52枚交換</option>
-    <option value="50-56">50枚貸し / 56枚交換</option>
-    <option value="custom">その他（手入力）</option>
-</select>
-
-<div id="customExchangeInputs" style="display:none; margin-top:12px;">
-
-<input 
+<input
 type="number"
 id="rentalValue"
-placeholder="貸出枚数"
+placeholder="1,000円あたりの貸出枚数（例：46）"
+min="0.01"
+step="0.01"
 >
 
 <input 
 type="number"
 id="exchangeValue"
-placeholder="交換枚数"
+placeholder="1,000円あたりの交換枚数（例：52）"
+min="0.01"
+step="0.01"
 >
 
-</div>
-
-</div>
+<label>交換枚数の状態</label>
+<select id="exchangeAccuracy">
+    <option value="confirmed">確認済み</option>
+    <option value="estimated">推定値</option>
+</select>
+<button type="button" class="secondary-button" onclick="applyExchangeEstimate()">貸出枚数から推定値を入力</button>
 <label>最小景品額</label>
 <select id="prizeUnit">
     <option value="unknown">不明</option>
@@ -160,7 +227,7 @@ margin-bottom:16px;
 
 <label>再プレイ上限</label>
 <select id="replayType" onchange="toggleReplayInput()">
-    <option value="none">なし</option>
+    <option value="none">上限なし</option>
     <option value="limit">あり</option>
 </select>
 
@@ -175,21 +242,66 @@ min="0"
 
 <br>
 
-<button onclick="addShop()">店舗登録</button>
+<button id="shopSaveButton" onclick="saveShop()">店舗登録</button>
+<button id="shopCancelEditButton" onclick="cancelShopEdit()" style="display:none;background:#4b5563;">編集をキャンセル</button>
 
-<table>
-<thead>
-<tr>
-<th>店舗名</th>
-<th>持ちメダル</th>
-<th>レート</th>
-<th>交換</th>
-<th>最小景品</th>
-<th>再プレイ</th>
-</tr>
-</thead>
-<tbody id="shopList"></tbody>
-</table>
+<div id="shopFormMessage" class="inline-message" aria-live="polite"></div>
+</div>
+
+<div class="card" id="shopManagementSection" style="display:none;">
+    <div class="section-heading-row">
+        <div>
+            <p class="eyebrow">登録済み店舗</p>
+            <h2>店舗管理</h2>
+        </div>
+    </div>
+    <p class="section-description">店舗を選ぶと、詳細・残高修正・換金を確認できます。</p>
+    <div id="shopManagementMessage" class="inline-message" aria-live="polite"></div>
+    <div id="shopList" class="shop-card-list"></div>
+</div>
+
+<div class="card" id="shopDetailSection" style="display:none;">
+    <button class="text-button" onclick="closeShopDetail()">← 店舗一覧へ</button>
+    <div id="shopDetailContent"></div>
+
+    <div class="detail-actions">
+        <button onclick="openShopEditFromDetail()">店舗情報を編集</button>
+        <button class="secondary-button" onclick="showShopOperation('adjust')">残高を修正</button>
+        <button class="cash-button" onclick="showShopOperation('withdraw')">換金</button>
+    </div>
+    <button class="danger-text-button" onclick="deleteSelectedShop()">この店舗を削除</button>
+
+    <div id="shopOperationMessage" class="inline-message" aria-live="polite"></div>
+
+    <div id="shopAdjustPanel" class="operation-panel" style="display:none;">
+        <h3>貯メダル残高を修正</h3>
+        <p id="adjustCurrentBalance"></p>
+        <label for="adjustNewBalance">修正後の実際の総貯メダル</label>
+        <input type="number" id="adjustNewBalance" min="0" step="1" oninput="updateAdjustmentPreview()">
+        <label for="adjustNote">メモ（任意）</label>
+        <textarea id="adjustNote" placeholder="実残高とのズレを修正"></textarea>
+        <div id="adjustPreview" class="operation-preview"></div>
+        <button id="adjustSubmitButton" onclick="submitMedalAdjustment()">残高修正を確定</button>
+        <button class="text-button" onclick="showShopOperation(null)">キャンセル</button>
+    </div>
+
+    <div id="shopWithdrawPanel" class="operation-panel" style="display:none;">
+        <h3>換金</h3>
+        <label for="withdrawCashAmount">実際におろした金額</label>
+        <input type="number" id="withdrawCashAmount" min="1" step="100" placeholder="例：20000" oninput="updateWithdrawalPreview()">
+        <label for="withdrawActualBalance">換金後の実際の貯メダル（任意）</label>
+        <input type="number" id="withdrawActualBalance" min="0" step="1" placeholder="空欄なら推定残高を使用" oninput="updateWithdrawalPreview()">
+        <label for="withdrawNote">メモ（任意）</label>
+        <textarea id="withdrawNote"></textarea>
+        <div id="withdrawPreview" class="operation-preview"></div>
+        <button id="withdrawSubmitButton" onclick="submitWithdrawal()">換金を確定</button>
+        <button class="text-button" onclick="showShopOperation(null)">キャンセル</button>
+    </div>
+
+    <section class="shop-history-section">
+        <h3>貯メダル増減履歴</h3>
+        <div id="shopMedalHistory" class="transaction-list"></div>
+    </section>
 </div>
 
 <div class="card" id="playSection" style="display:none;">
@@ -215,41 +327,69 @@ placeholder="機種名"
 
 <p>店舗：<span id="currentShop">-</span></p>
 <p>機種：<span id="currentMachine">-</span></p>
-<p>使用メダル：<span id="currentUsedMedal">0</span>枚</p>
-<p>現金投資：<span id="currentCash">0</span>円</p>
+<p>開始時総貯メダル：<span id="currentStartMedal">0</span>枚</p>
+<p>貸出：<span id="currentRental">0</span>枚／1,000円</p>
+<p>交換：<span id="currentExchange">0</span>枚／1,000円</p>
 
-<div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
-
-<button 
-style="width:auto;"
-onclick="addMedalInvestment(46)"
->
-46枚投資
-</button>
-
-<button 
-style="width:auto;"
-onclick="addMedalInvestment(50)"
->
-50枚投資
-</button>
-
-<button 
-style="width:auto;"
-onclick="addCashInvestment()"
->
-1000円現金
-</button>
-
-</div>
-
-<input 
+<input
 type="number"
-id="playRecovery"
-placeholder="回収枚数"
+id="playCashInvestment"
+placeholder="現金投資額"
+min="0"
+step="1000"
+oninput="updatePlayCashInvestment()"
+>
+
+<p>現金貸出相当：<span id="currentCashLentMedal">0</span>枚</p>
+<p>貯メダル増減：<span id="currentMedalDelta">0</span>枚</p>
+<p>増減の現金化可能額：<span id="currentCashableDelta">0</span>円</p>
+<p>現在の計算収支：<span id="currentCalculatedProfit">0</span>円</p>
+
+<input
+type="number"
+id="playEndMedal"
+placeholder="終了時の会員カード総貯メダル"
 min="0"
 style="margin-top:20px;"
+oninput="updateCurrentPlayDraft()"
 >
+
+<input
+type="number"
+id="playHours"
+placeholder="稼働時間（空欄は開始時刻から自動計算）"
+min="0"
+step="0.1"
+oninput="updateCurrentPlayDraft()"
+>
+
+<input
+type="number"
+id="playExpected"
+placeholder="期待値（空欄可）"
+step="500"
+oninput="updateCurrentPlayDraft()"
+>
+
+<label for="playConfirmationType">確定・示唆（任意）</label>
+<select id="playConfirmationType" onchange="togglePlayConfirmationNote()">
+    <option value="none">なし</option>
+    <option value="setting_6">6確</option>
+    <option value="setting_5_6">56確</option>
+    <option value="setting_4_5_6">456確</option>
+    <option value="setting_3_plus">3以上</option>
+    <option value="setting_2_plus">2以上</option>
+    <option value="high_setting_behavior">高設定挙動</option>
+    <option value="other">その他</option>
+</select>
+
+<div id="playConfirmationNoteArea" style="display:none;">
+    <label for="playConfirmationNote">確定・示唆の詳細</label>
+    <input type="text" id="playConfirmationNote" placeholder="金トロフィー等" oninput="updateCurrentPlayDraft()">
+</div>
+
+<label for="playNote">メモ（任意）</label>
+<textarea id="playNote" class="play-note-input" rows="4" placeholder="その日の実戦で気付いたこと" oninput="updateCurrentPlayDraft()"></textarea>
 
 <button 
 style="margin-top:12px; background:green;"
@@ -274,15 +414,14 @@ onclick="finishPlay()"
 
 <select id="shop">
     <option value="">店舗を選択</option>
-    <option value="未登録店舗">未登録店舗（単発用）</option>
 </select>
 
 <input type="text" id="machine" placeholder="機種名">
 
 <input 
 type="number"
-id="usedMedal"
-placeholder="使用メダル"
+id="startMedal"
+placeholder="開始時総貯メダル"
 min="0"
 step="1"
 >
@@ -297,8 +436,8 @@ step="1000"
 
 <input 
 type="number"
-id="recoveryMedal"
-placeholder="回収メダル"
+id="endMedal"
+placeholder="終了時総貯メダル"
 min="0"
 step="1"
 >
@@ -317,6 +456,26 @@ id="expected"
 placeholder="期待値（空欄可）"
 step="500"
 >
+
+<label for="confirmationType">確定・示唆（任意）</label>
+<select id="confirmationType" onchange="toggleManualConfirmationNote()">
+    <option value="none">なし</option>
+    <option value="setting_6">6確</option>
+    <option value="setting_5_6">56確</option>
+    <option value="setting_4_5_6">456確</option>
+    <option value="setting_3_plus">3以上</option>
+    <option value="setting_2_plus">2以上</option>
+    <option value="high_setting_behavior">高設定挙動</option>
+    <option value="other">その他</option>
+</select>
+
+<div id="confirmationNoteArea" style="display:none;">
+    <label for="confirmationNote">確定・示唆の詳細</label>
+    <input type="text" id="confirmationNote" placeholder="金トロフィー等">
+</div>
+
+<label for="playRecordNote">メモ（任意）</label>
+<textarea id="playRecordNote" class="play-note-input" rows="4" placeholder="その日の実戦で気付いたこと"></textarea>
 
 <button onclick="addRecord()">記録する</button>
 
@@ -401,6 +560,13 @@ onclick="resetCounter()"
 リセット
 </button>
 
+<button
+style="background:#7f1d1d;margin-top:10px;"
+onclick="deleteCounterProfile()"
+>
+選択中のプロファイルを削除
+</button>
+
 </div>
 
 <div class="card" id="analysisSection" style="display:none;">
@@ -420,9 +586,9 @@ onchange="changeIncomeType()"
 style="padding:10px; border-radius:8px;"
 >
     <option value="hour">時給</option>
-    <option value="day">日給</option>
-    <option value="week">週給</option>
-    <option value="month">月給</option>
+    <option value="day">今日の収支</option>
+    <option value="week">今週の収支</option>
+    <option value="month">今月の収支</option>
 </select>
 
 <p style="margin:0; font-size:18px; font-weight:bold;">
@@ -432,9 +598,9 @@ style="padding:10px; border-radius:8px;"
 
 </div>
 
-<p>総投資：<span id="totalInvestment">0</span></p>
+<p>現金投資合計：<span id="totalInvestment">0</span></p>
 
-<p>総回収：<span id="totalRecovery">0</span></p>
+<p>貯メダル増減の現金化額：<span id="totalRecovery">0</span></p>
 
 <p>回収率：<span id="recoveryRate">0</span>%</p>
 
@@ -516,19 +682,31 @@ flex-wrap:wrap;
 <th>日付</th>
 <th>店舗</th>
 <th>機種</th>
-<th>使用枚数</th>
+<th>開始貯メダル</th>
+<th>終了貯メダル</th>
+<th>増減</th>
 <th>現金投資</th>
-<th>回収枚数</th>
-<th>交換額</th>
-<th>余り枚数</th>
+<th>現金貸出相当</th>
+<th>増減の現金化可能額</th>
+<th>レート・貸出／交換</th>
+<th>最小景品</th>
+<th>再プレイ上限</th>
 <th>収支</th>
 <th>時間</th>
 <th>期待値</th>
-<th>削除</th>
+<th>確定・メモ</th>
+<th>操作</th>
 </tr>
 </thead>
 <tbody id="history"></tbody>
 </table>
+</div>
+
+<div id="recordDetailModal" class="record-detail-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="recordDetailTitle">
+    <div class="record-detail-card">
+        <button class="record-detail-close" onclick="closeRecordDetail()" aria-label="閉じる">×</button>
+        <div id="recordDetailContent"></div>
+    </div>
 </div>
 
 </div>
@@ -557,12 +735,19 @@ flex-wrap:wrap;
 
 </nav>
 
+</div>
+
 <script>
 
 
-let records = JSON.parse(localStorage.getItem("records")) || [];
+let records = [];
 
-let shops = JSON.parse(localStorage.getItem("shops")) || [];
+const legacyRecords =
+    JSON.parse(localStorage.getItem("records")) || [];
+
+let shops = [];
+let medalTransactions = [];
+let selectedShopId = null;
 
 let incomeType = "hour";
 
@@ -570,6 +755,8 @@ let graphPeriod = "all";
 
 let profitChart = null;
 let currentPlayData = null;
+let currentUserId = null;
+let editingShopId = null;
 let counterProfiles =
 JSON.parse(
     localStorage.getItem("counterProfiles")
@@ -587,6 +774,146 @@ JSON.parse(
     localStorage.getItem("counterData")
 ) || {};
 
+function counterStorageKey(name){
+    return currentUserId ? `${name}_${currentUserId}` : name;
+}
+
+async function syncCounterDataToSupabase(){
+
+    if(!currentUserId){
+        return;
+    }
+
+    const { error } = await supabaseClient
+        .from("counter_settings")
+        .upsert({
+            user_id: currentUserId,
+            profiles: counterProfiles,
+            active_profile: activeCounterProfile,
+            counter_data: counterData,
+            updated_at: new Date().toISOString()
+        });
+
+    if(error){
+        console.error("小役カウンター同期エラー:", error);
+    }
+}
+
+async function loadCounterDataForCurrentUser(){
+
+    if(!currentUserId){
+        return false;
+    }
+
+    const profilesKey = counterStorageKey("counterProfiles");
+    const activeKey = counterStorageKey("activeCounterProfile");
+    const dataKey = counterStorageKey("counterData");
+
+    const { data, error } = await supabaseClient
+        .from("counter_settings")
+        .select("profiles, active_profile, counter_data")
+        .eq("user_id", currentUserId)
+        .maybeSingle();
+
+    if(error){
+        console.error("小役カウンタ読み込みエラー:", error);
+    }
+
+    if(data){
+        counterProfiles = data.profiles || [];
+        activeCounterProfile = Number(data.active_profile) || 0;
+        counterData = data.counter_data || {};
+
+        localStorage.setItem(profilesKey, JSON.stringify(counterProfiles));
+        localStorage.setItem(activeKey, String(activeCounterProfile));
+        localStorage.setItem(dataKey, JSON.stringify(counterData));
+        return true;
+    }
+
+    const hasScopedData = localStorage.getItem(profilesKey) !== null;
+
+    if(hasScopedData){
+        counterProfiles = JSON.parse(localStorage.getItem(profilesKey)) || [];
+        activeCounterProfile = Number(localStorage.getItem(activeKey)) || 0;
+        counterData = JSON.parse(localStorage.getItem(dataKey)) || {};
+    }else{
+        const legacyOwner = localStorage.getItem("counterLegacyOwner");
+
+        if(legacyOwner && legacyOwner !== currentUserId){
+            counterProfiles = [];
+            activeCounterProfile = 0;
+            counterData = {};
+        }else{
+            localStorage.setItem("counterLegacyOwner", currentUserId);
+        }
+
+        localStorage.setItem(profilesKey, JSON.stringify(counterProfiles));
+        localStorage.setItem(activeKey, String(activeCounterProfile));
+        localStorage.setItem(dataKey, JSON.stringify(counterData));
+    }
+
+    await syncCounterDataToSupabase();
+    return true;
+}
+
+function getCurrentPlayStorageKey(){
+    return currentUserId
+        ? `currentPlay_${currentUserId}`
+        : null;
+}
+
+function saveCurrentPlayBackup(){
+
+    const key = getCurrentPlayStorageKey();
+
+    if(key && currentPlayData){
+        localStorage.setItem(key, JSON.stringify(currentPlayData));
+    }
+}
+
+function clearCurrentPlayBackup(){
+
+    const key = getCurrentPlayStorageKey();
+
+    if(key){
+        localStorage.removeItem(key);
+    }
+}
+
+function restoreCurrentPlayBackup(){
+
+    const key = getCurrentPlayStorageKey();
+
+    if(!key){
+        return;
+    }
+
+    try{
+        currentPlayData = JSON.parse(localStorage.getItem(key));
+    }catch(error){
+        console.error("稼働中データ復元エラー:", error);
+        currentPlayData = null;
+        localStorage.removeItem(key);
+    }
+
+    if(
+        currentPlayData &&
+        (
+            currentPlayData.startMedal === undefined ||
+            !currentPlayData.rental ||
+            !currentPlayData.exchange
+        )
+    ){
+        currentPlayData = null;
+        localStorage.removeItem(key);
+    }
+
+    if(currentPlayData){
+        document.getElementById("currentPlay").style.display = "block";
+        updateCurrentPlayUI();
+    }
+}
+
 function getActiveCounterKey(){
 
     const profile = counterProfiles[activeCounterProfile];
@@ -598,130 +925,288 @@ function getActiveCounterKey(){
     return `profile_${activeCounterProfile}_${profile.name}`;
 }
 
-function saveData(){
+function mapSupabaseRecord(record){
 
-    localStorage.setItem(
-        "records",
-        JSON.stringify(records)
-    );
+    const legacy = record.legacy_payload || {};
 
-    localStorage.setItem(
-        "shops",
-        JSON.stringify(shops)
-    );
+    return {
+        id: record.id,
+        shopId: record.shop_id,
+        date: record.played_on,
+        shop: record.shop_name_snapshot,
+        machine: record.machine,
+        startMedal:
+            record.start_medal === null ? null : Number(record.start_medal),
+        endMedal:
+            record.end_medal === null ? null : Number(record.end_medal),
+        medalDelta: Number(
+            record.medal_delta ??
+            ((legacy.recoveryMedal || 0) - (legacy.usedMedal || 0))
+        ),
+        cashInvestment: Number(record.cash_investment) || 0,
+        cashLentMedal: Number(record.cash_lent_medal) || 0,
+        cashableDeltaYen: Number(
+            record.cashable_delta_yen ?? legacy.payoutYen ?? 0
+        ),
+        rateSnapshot: Number(record.rate_snapshot) || 0,
+        rentalSnapshot: Number(record.rental_snapshot) || 0,
+        exchangeSnapshot: Number(record.exchange_snapshot) || 0,
+        replayLimitSnapshot:
+            record.replay_limit_snapshot === null
+            ? null
+            : Number(record.replay_limit_snapshot),
+        prizeUnitSnapshot: Number(record.prize_unit_snapshot) || 200,
+        profit: Number(record.profit) || 0,
+        hours: Number(record.hours) || 0,
+        expected:
+            record.expected === null
+            ? null
+            : Number(record.expected),
+        confirmationType: record.confirmation_type || "none",
+        confirmationNote: record.confirmation_note || "",
+        note: record.note || ""
+    };
 }
 
-function addRecord(){
+async function loadRecordsFromSupabase(){
+
+    const { data: authData, error: authError } =
+        await supabaseClient.auth.getUser();
+
+    if(authError || !authData.user){
+        records = [];
+        return false;
+    }
+
+    const userId = authData.user.id;
+    const migrationKey = `recordsMigrated_${userId}`;
+    const legacyOwner = localStorage.getItem("recordsLegacyOwner");
+    const canMigrateLegacy = !legacyOwner || legacyOwner === userId;
+
+    if(
+        legacyRecords.length > 0 &&
+        canMigrateLegacy &&
+        localStorage.getItem(migrationKey) !== "true"
+    ){
+        const migrationRows = legacyRecords.map(record => {
+
+            const matchedShop = shops.find(
+                shop => shop.name === record.shop
+            );
+
+            return {
+                user_id: userId,
+                shop_id: matchedShop?.id || null,
+                shop_name_snapshot: String(record.shop || "未登録店舗"),
+                played_on: record.date,
+                machine: String(record.machine || ""),
+                record_version: 1,
+                cash_investment: toNumber(record.cashInvestment),
+                cashable_delta_yen: toNumber(record.payoutYen),
+                profit: toNumber(record.profit),
+                hours: toNumber(record.hours),
+                expected: record.expected ?? null,
+                legacy_payload: record
+            };
+        });
+
+        const { error: migrationError } =
+            await supabaseClient
+            .from("play_records")
+            .insert(migrationRows);
+
+        if(migrationError){
+            console.error("履歴移行エラー:", migrationError);
+            alert(
+                "既存の稼働履歴をSupabaseへ移行できませんでした: " +
+                migrationError.message
+            );
+            return false;
+        }
+
+        localStorage.setItem(migrationKey, "true");
+        localStorage.setItem("recordsLegacyOwner", userId);
+    }else if(!canMigrateLegacy){
+        localStorage.setItem(migrationKey, "true");
+    }
+
+    const { data, error } =
+        await supabaseClient
+        .from("play_records")
+        .select("*")
+        .eq("user_id", userId)
+        .order("played_on", { ascending:true })
+        .order("created_at", { ascending:true });
+
+    if(error){
+        console.error("履歴読み込みエラー:", error);
+        alert("稼働履歴を読み込めませんでした: " + error.message);
+        records = [];
+        return false;
+    }
+
+    const playRecords = (data || []).map(record => ({
+        ...mapSupabaseRecord(record),
+        sourceType: "play"
+    }));
+    const adjustmentRecords = medalTransactions
+        .filter(transaction => transaction.type === "manual_adjustment")
+        .map(transaction => {
+            const shop = shops.find(item => String(item.id) === String(transaction.shopId));
+            return {
+                id: transaction.id,
+                transactionId: transaction.id,
+                sourceType: "manual_adjustment",
+                shopId: transaction.shopId,
+                date: normalizeDateString(transaction.createdAt),
+                shop: shop?.name || "店舗",
+                machine: "残高修正",
+                startMedal: transaction.balanceBefore,
+                endMedal: transaction.balanceAfter,
+                medalDelta: transaction.amount,
+                cashInvestment: 0,
+                cashLentMedal: 0,
+                cashableDeltaYen: transaction.profitEffect,
+                rateSnapshot: 0,
+                rentalSnapshot: 0,
+                exchangeSnapshot: transaction.exchangeSnapshot,
+                replayLimitSnapshot: null,
+                prizeUnitSnapshot: transaction.prizeUnitSnapshot,
+                profit: transaction.profitEffect,
+                hours: 0,
+                expected: null
+            };
+        });
+    records = [...playRecords, ...adjustmentRecords]
+        .sort((a,b) => new Date(a.date) - new Date(b.date));
+    return true;
+}
+
+async function addRecord(updateShopMedal = true){
 
     const date = document.getElementById("date").value;
-    const shop = document.getElementById("shop").value;
+    const shopIdValue = document.getElementById("shop").value;
     const machine = document.getElementById("machine").value;
-
-    const usedMedal = Number(
-        document.getElementById("usedMedal").value
-    );
-
-    const cashInvestment = Number(
-        document.getElementById("cashInvestment").value
-    );
-
-    const recoveryMedal = Number(
-        document.getElementById("recoveryMedal").value
-    );
-
+    const startMedal = Number(document.getElementById("startMedal").value);
+    const endMedal = Number(document.getElementById("endMedal").value);
+    const cashInvestment = Number(document.getElementById("cashInvestment").value);
     const hours = Number(document.getElementById("hours").value);
-
     const expectedValue = document.getElementById("expected").value;
-
     const expected = expectedValue === ""
         ? null
         : Number(expectedValue);
+    const confirmationType = document.getElementById("confirmationType").value || "none";
+    const confirmationNote = confirmationType === "other"
+        ? document.getElementById("confirmationNote").value.trim()
+        : null;
+    const note = document.getElementById("playRecordNote").value.trim() || null;
 
-    if(!date || !shop || !machine){
+    if(!date || !shopIdValue || !machine){
         alert("未入力項目があります");
         return;
     }
 
+    if(
+        startMedal < 0 ||
+        endMedal < 0 ||
+        cashInvestment < 0 ||
+        hours < 0 ||
+        !Number.isFinite(startMedal) ||
+        !Number.isFinite(endMedal) ||
+        !Number.isFinite(cashInvestment) ||
+        !Number.isFinite(hours)
+    ){
+        alert("貯メダル・投資額・稼働時間は0以上の数値で入力してください");
+        return;
+    }
+
     const selectedShop = shops.find(
-        s => s.name === shop
+        s => String(s.id) === String(shopIdValue)
     );
 
-    let payoutYen = 0;
-    let remainderMedal = 0;
-
-    if(selectedShop && selectedShop.exchange){
-
-        const rawPayout =
-            (recoveryMedal / selectedShop.exchange)
-            * 1000;
-
-        const prizeUnit = selectedShop.prizeUnit || 200;
-
-        payoutYen =
-            Math.floor(
-                rawPayout / prizeUnit
-            )
-            * prizeUnit;
-
-        const remainderYen =
-            rawPayout - payoutYen;
-
-        remainderMedal =
-            Math.floor(
-                remainderYen
-                / 1000
-                * selectedShop.exchange
-            );
+    if(!selectedShop){
+        alert("新ルールの稼働記録には登録済み店舗を選択してください");
+        return;
     }
 
-    else{
-        payoutYen = recoveryMedal * 20;
+    const shop = selectedShop.name;
+
+    const snapshot = String(currentPlayData?.shopId) === String(selectedShop.id)
+        ? currentPlayData
+        : {
+            startMedal,
+            rate: selectedShop.rate,
+            rental: selectedShop.rental,
+            exchange: selectedShop.exchange,
+            replayLimit: selectedShop.replayLimit,
+            prizeUnit: selectedShop.prizeUnit
+        };
+
+    const rental = Number(snapshot.rental);
+    const exchange = Number(snapshot.exchange);
+    const rate = Number(snapshot.rate);
+    const prizeUnit = Number(snapshot.prizeUnit) || 200;
+
+    if(rate <= 0 || rental <= 0 || exchange <= 0){
+        alert("店舗のレート・貸出枚数・交換枚数を設定してください");
+        return;
     }
 
-    let usedMedalValue = 0;
-
-    if(selectedShop && selectedShop.rental){
-
-        const prizeUnit = selectedShop.prizeUnit || 200;
-
-        const rawUsedMedalValue =
-            (usedMedal / selectedShop.rental)
-            * 1000;
-
-        usedMedalValue =
-            Math.floor(
-                rawUsedMedalValue / prizeUnit
-            ) * prizeUnit;
+    if(cashInvestment % 1000 !== 0){
+        alert("現金投資額は1,000円単位で入力してください");
+        return;
     }
 
-    else{
-        usedMedalValue = usedMedal * 20;
-    }
-
-    const profit = Math.floor(
-        payoutYen
-        - cashInvestment
-        - usedMedalValue
+    const medalDelta = endMedal - startMedal;
+    const cashLentMedal = cashInvestment / 1000 * rental;
+    const cashableDeltaYen = calculateCashableDeltaYen(
+        medalDelta,
+        exchange,
+        prizeUnit
     );
+    const profit = cashableDeltaYen - cashInvestment;
 
+    const { data: insertedRecord, error } =
+        await supabaseClient.rpc("create_play_record_v2", {
+            p_shop_id: selectedShop?.id || null,
+            p_shop_name: shop,
+            p_date: date,
+            p_machine: machine,
+            p_start_medal: startMedal,
+            p_end_medal: endMedal,
+            p_cash_investment: cashInvestment,
+            p_cash_lent_medal: cashLentMedal,
+            p_cashable_delta_yen: cashableDeltaYen,
+            p_rate_snapshot: rate,
+            p_rental_snapshot: rental,
+            p_exchange_snapshot: exchange,
+            p_replay_limit_snapshot: snapshot.replayLimit ?? null,
+            p_prize_unit_snapshot: prizeUnit,
+            p_profit: profit,
+            p_hours: hours,
+            p_expected: expected,
+            p_adjust_medal: Boolean(updateShopMedal),
+            p_confirmation_type: confirmationType,
+            p_confirmation_note: confirmationNote,
+            p_note: note
+        });
 
+    if(error){
+        console.error("稼働履歴保存エラー:", error);
+        alert("稼働履歴を保存できませんでした: " + error.message);
+        return;
+    }
 
-    records.push({
-        date,
-        shop,
-        machine,
-        usedMedal,
-        cashInvestment,
-        recoveryMedal,
-        usedMedalValue,
-        payoutYen,
-        remainderMedal,
-        profit,
-        hours,
-        expected
-    });
+    const savedRecord = Array.isArray(insertedRecord)
+        ? insertedRecord[0]
+        : insertedRecord;
 
-    saveData();
+    records.push({ ...mapSupabaseRecord(savedRecord), sourceType:"play" });
+
+    if(selectedShop){
+        await loadShopsFromSupabase();
+        await loadMedalTransactions();
+    }
 
     render();
 
@@ -730,6 +1215,12 @@ function addRecord(){
             input.value = "";
         }
     });
+    document.getElementById("confirmationType").value = "none";
+    document.getElementById("confirmationNote").value = "";
+    document.getElementById("playRecordNote").value = "";
+    toggleManualConfirmationNote();
+
+    return true;
 }
 function render(){
 
@@ -745,7 +1236,7 @@ function render(){
 
     renderChart();
 
-    renderShopList();
+    renderShopManagementList();
 
     renderPlayShopSelect();
 
@@ -754,17 +1245,44 @@ function render(){
     renderProfileSelect();
 
     renderCounter();
+
+    if(selectedShopId){
+        renderShopDetail();
+    }
 }
 
-function deleteRecord(index){
+async function deleteRecord(index){
 
     if(!confirm("この稼働履歴を削除しますか？")){
         return;
     }
 
-    records.splice(index,1);
+    const record = records[index];
 
-    saveData();
+    if(record?.sourceType !== "play"){
+        alert("残高修正履歴は監査記録のため削除できません");
+        return;
+    }
+
+    if(!record?.id){
+        alert("削除対象の識別情報がありません");
+        return;
+    }
+
+    const { error } =
+        await supabaseClient.rpc("delete_play_record", {
+            p_record_id: record.id
+        });
+
+    if(error){
+        console.error("稼働履歴削除エラー:", error);
+        alert("稼働履歴を削除できませんでした: " + error.message);
+        return;
+    }
+
+    await loadShopsFromSupabase();
+    await loadMedalTransactions();
+    await loadRecordsFromSupabase();
 
     render();
 }
@@ -779,21 +1297,39 @@ function renderHistory(){
 
         history.innerHTML += `
         <tr>
-            <td>${record.date}</td>
-            <td>${record.shop}</td>
-            <td>${record.machine}</td>
-           <td>${record.usedMedal}</td>
-<td>${record.cashInvestment}</td>
-<td>${record.recoveryMedal}</td>
-<td>${Math.floor(record.payoutYen)}</td>
-<td>${record.remainderMedal}</td>
+            <td>${escapeHtml(record.date)}</td>
+            <td>${escapeHtml(record.shop)}</td>
+            <td>${escapeHtml(record.machine)}</td>
+            <td>${record.startMedal ?? "-"}</td>
+            <td>${record.endMedal ?? "-"}</td>
+            <td>${record.medalDelta >= 0 ? "+" : ""}${record.medalDelta}</td>
+            <td>${record.cashInvestment}</td>
+            <td>${record.cashLentMedal}</td>
+            <td>${record.cashableDeltaYen}</td>
+            <td>${record.rentalSnapshot && record.exchangeSnapshot
+                ? `${record.rateSnapshot}円・${record.rentalSnapshot}枚貸／${record.exchangeSnapshot}枚交換`
+                : "-"}</td>
+            <td>${record.prizeUnitSnapshot ? record.prizeUnitSnapshot + "円" : "-"}</td>
+            <td>${record.rentalSnapshot
+                ? (record.replayLimitSnapshot ?? "上限なし")
+                : "-"}</td>
             <td class="${record.profit >= 0 ? 'profit' : 'loss'}">
                 ${Math.floor(record.profit)}
             </td>
             <td>${record.hours}</td>
             <td>${record.expected ?? "-"}</td>
+            <td>${record.sourceType === "play" ? [
+                record.confirmationType && record.confirmationType !== "none"
+                    ? escapeHtml(confirmationLabel(record.confirmationType))
+                    : "",
+                record.note ? "メモあり" : ""
+            ].filter(Boolean).join(" / ") || "-" : "-"}</td>
             <td>
-        <button 
+        ${record.sourceType === "play" ? `<button
+        onclick="openRecordDetail(${index})"
+        style="width:auto;padding:6px 10px;margin-right:4px;">
+            詳細
+        </button><button
         onclick="deleteRecord(${index})"
         style="
         width:auto;
@@ -801,16 +1337,42 @@ function renderHistory(){
         background:red;
         ">
             削除
-        </button>
+        </button>` : "-"}
     </td>
         </tr>
         `;
     });
 }
 
+function openRecordDetail(index){
+    const record = records[index];
+    if(!record || record.sourceType !== "play") return;
+    const type = record.confirmationType || "none";
+    const confirmation = type === "none"
+        ? "なし"
+        : confirmationLabel(type);
+    document.getElementById("recordDetailContent").innerHTML = `
+        <p class="eyebrow">稼働履歴詳細</p>
+        <h2 id="recordDetailTitle">${escapeHtml(record.date)}</h2>
+        <p><strong>${escapeHtml(record.shop)}</strong><br>${escapeHtml(record.machine)}</p>
+        <div class="record-detail-profit ${record.profit >= 0 ? "profit" : "loss"}">${formatSigned(record.profit)}円</div>
+        <dl class="record-detail-list">
+            <div><dt>確定・示唆</dt><dd>${escapeHtml(confirmation)}</dd></div>
+            ${type === "other" && record.confirmationNote
+                ? `<div><dt>示唆の詳細</dt><dd>${escapeHtml(record.confirmationNote)}</dd></div>`
+                : ""}
+            <div class="record-note-row"><dt>メモ</dt><dd>${record.note ? escapeHtml(record.note) : "なし"}</dd></div>
+        </dl>`;
+    document.getElementById("recordDetailModal").style.display = "grid";
+}
+
+function closeRecordDetail(){
+    document.getElementById("recordDetailModal").style.display = "none";
+}
+
 function renderSummary(){
 
-    const totalGames = records.length;
+    const totalGames = records.filter(record => record.sourceType === "play").length;
 
     const totalProfit = records.reduce((sum,r)=>sum+r.profit,0);
 
@@ -895,7 +1457,7 @@ function renderSummary(){
     );
 
     const totalRecovery = records.reduce(
-        (sum,r)=>sum+r.payoutYen,
+        (sum,r)=>sum+r.cashableDeltaYen,
         0
     );
 
@@ -921,15 +1483,15 @@ function renderSummary(){
         document.getElementById("incomeValue").innerText = averageHourly;
     }
     if(incomeType === "day"){
-        document.getElementById("incomeLabel").innerText = "日給";
+        document.getElementById("incomeLabel").innerText = "今日の収支";
         document.getElementById("incomeValue").innerText = averageDaily;
     }
     if(incomeType === "week"){
-        document.getElementById("incomeLabel").innerText = "週給";
+        document.getElementById("incomeLabel").innerText = "今週の収支";
         document.getElementById("incomeValue").innerText = averageWeekly;
     }
     if(incomeType === "month"){
-        document.getElementById("incomeLabel").innerText = "月給";
+        document.getElementById("incomeLabel").innerText = "今月の収支";
         document.getElementById("incomeValue").innerText = averageMonthly;
     }
 }
@@ -945,12 +1507,12 @@ function renderShopAnalysis(){
     total:0,
     investment:0,
     recovery:0
-　　　　　　};
+};
         }
 
         shopMap[r.shop].total += r.profit;
         shopMap[r.shop].investment += r.cashInvestment;
-        shopMap[r.shop].recovery += r.payoutYen;
+        shopMap[r.shop].recovery += r.cashableDeltaYen;
     });
 
     const tbody = document.getElementById("shopAnalysis");
@@ -969,7 +1531,7 @@ function renderShopAnalysis(){
 
         tbody.innerHTML += `
         <tr>
-            <td>${shop}</td>
+            <td>${escapeHtml(shop)}</td>
             <td>${data.total}</td>
             <td>${recoveryRate}%</td>
         </tr>
@@ -1007,7 +1569,7 @@ function renderMachineAnalysis(){
 
         tbody.innerHTML += `
         <tr>
-            <td>${machine}</td>
+            <td>${escapeHtml(machine)}</td>
             <td>
                 ${
                     data.expected === 0
@@ -1022,18 +1584,6 @@ function renderMachineAnalysis(){
     }
 }
 
-function toggleExchangeInputs(){
-
-    const exchangeType = document
-        .getElementById("exchangeType")
-        .value;
-
-    document.getElementById("exchangeInputs")
-        .style.display = exchangeType === "nonEqual"
-        ? "block"
-        : "none";
-}
-
 function toggleReplayInput(){
 
     const replayType = document
@@ -1046,154 +1596,745 @@ function toggleReplayInput(){
         : "none";
 }
 
-document.addEventListener("change",(e)=>{
-
-    if(e.target.id === "exchangePreset"){
-
-        document.getElementById(
-            "customExchangeInputs"
-        ).style.display = e.target.value === "custom"
-        ? "block"
-        : "none";
+async function loadMedalTransactions(){
+    if(!currentUserId){
+        medalTransactions = [];
+        return;
     }
-});
 
-function addShop(){
+    const { data, error } = await supabaseClient
+        .from("medal_transactions")
+        .select("id, shop_id, type, amount, balance_before, balance_after, cash_amount, profit_effect, related_record_id, exchange_snapshot, prize_unit_snapshot, inferred_exchange, note, created_at")
+        .eq("user_id", currentUserId)
+        .order("created_at", { ascending:false });
 
-    const name = document
-        .getElementById("shopName")
-        .value;
+    if(error){
+        console.error("貯メダル履歴読み込みエラー:", error);
+        medalTransactions = [];
+        return;
+    }
 
-    const medal = Number(
-        document.getElementById("shopMedal").value
-    );
+    medalTransactions = (data || []).map(item => ({
+        id: item.id,
+        shopId: item.shop_id,
+        type: item.type,
+        amount: Number(item.amount) || 0,
+        balanceBefore: Number(item.balance_before) || 0,
+        balanceAfter: Number(item.balance_after) || 0,
+        cashAmount: Number(item.cash_amount) || 0,
+        profitEffect: Number(item.profit_effect) || 0,
+        relatedRecordId: item.related_record_id,
+        exchangeSnapshot: item.exchange_snapshot === null ? null : Number(item.exchange_snapshot),
+        prizeUnitSnapshot: item.prize_unit_snapshot === null ? null : Number(item.prize_unit_snapshot),
+        inferredExchange: item.inferred_exchange === null ? null : Number(item.inferred_exchange),
+        note: item.note || "",
+        createdAt: item.created_at
+    }));
+}
 
-    const rate = document
-        .getElementById("shopRate")
-        .value;
+async function loadShopsFromSupabase(){
 
-    const exchangeType = document
-        .getElementById("exchangeType")
-        .value;
+    const { data: authData, error: authError } =
+        await supabaseClient.auth.getUser();
 
-    const exchangePreset = document
-        .getElementById("exchangePreset")
-        .value;
+    if(authError || !authData.user){
+        shops = [];
+        return false;
+    }
 
-    const replayType = document
-        .getElementById("replayType")
-        .value;
+    const { data, error } =
+        await supabaseClient
+        .from("shop_asset_details")
+        .select(`
+            id,
+            name,
+            medal,
+            rate,
+            rental,
+            exchange,
+            exchange_is_estimated,
+            prize_unit,
+            replay_limit,
+            official_url,
+            pworld_url,
+            x_url,
+            event_days,
+            reset_tendency,
+            carryover_tendency,
+            memo,
+            cashable_yen,
+            remainder_medals,
+            medals_to_next_prize
+        `)
+        .eq("user_id", authData.user.id)
+        .order("created_at", {
+            ascending:true
+        });
 
-    const replayLimit = Number(
-        document.getElementById("replayLimit").value
-    ) || 0;
+    if(error){
+        console.error(
+            "店舗読み込みエラー:",
+            error
+        );
+        shops = [];
+        return false;
+    }
 
-    const prizeUnitValue = document
-        .getElementById("prizeUnit")
-        .value;
+    shops = (data || []).map(shop => ({
 
-    const prizeUnit =
-        prizeUnitValue === "unknown"
-        ? 200
-        : Number(prizeUnitValue);
+        id: shop.id,
+
+        name: shop.name,
+
+        medal:
+            Number(shop.medal) || 0,
+
+        rate: Number(shop.rate) || 0,
+
+        rental:
+            shop.rental === null
+            ? null
+            : Number(shop.rental),
+
+        exchange:
+            shop.exchange === null
+            ? null
+            : Number(shop.exchange),
+
+        exchangeIsEstimated: Boolean(shop.exchange_is_estimated),
+
+        prizeUnit:
+            Number(shop.prize_unit) || 200,
+
+        replayLimit:
+            shop.replay_limit === null
+            ? null
+            : Number(shop.replay_limit),
+
+        officialUrl: shop.official_url || "",
+        pworldUrl: shop.pworld_url || "",
+        xUrl: shop.x_url || "",
+        eventDays: Array.isArray(shop.event_days) ? shop.event_days : [],
+        resetTendency: shop.reset_tendency || "",
+        carryoverTendency: shop.carryover_tendency || "",
+        memo: shop.memo || "",
+        cashableYen: Number(shop.cashable_yen) || 0,
+        remainderMedals: Number(shop.remainder_medals) || 0,
+        medalsToNextPrize: Number(shop.medals_to_next_prize) || 0
+    }));
+    return true;
+}
+
+async function saveShop(){
+
+    const wasEditing = Boolean(editingShopId);
+
+    const name = document.getElementById("shopName").value.trim();
+    const medal = Number(document.getElementById("shopMedal").value);
+    const rate = Number(document.getElementById("shopRate").value);
+    const rental = Number(document.getElementById("rentalValue").value);
+    const exchange = Number(document.getElementById("exchangeValue").value);
+    const exchangeIsEstimated = document.getElementById("exchangeAccuracy").value === "estimated";
+    const replayType = document.getElementById("replayType").value;
+    const replayLimit = Number(document.getElementById("replayLimit").value);
+    const prizeUnitValue = document.getElementById("prizeUnit").value;
+    const prizeUnit = prizeUnitValue === "unknown" ? 200 : Number(prizeUnitValue);
+    const officialUrl = document.getElementById("shopOfficialUrl").value.trim();
+    const pworldUrl = document.getElementById("shopPworldUrl").value.trim();
+    const xUrl = document.getElementById("shopXUrl").value.trim();
+    const eventDays = document.getElementById("shopEventDays").value
+        .split(/[、,]/)
+        .map(value => value.trim())
+        .filter(Boolean);
+    const resetTendency = document.getElementById("shopResetTendency").value.trim();
+    const carryoverTendency = document.getElementById("shopCarryoverTendency").value.trim();
+    const memo = document.getElementById("shopMemo").value.trim();
 
     if(!name){
         alert("店舗名を入力してください");
         return;
     }
 
-    let rental = null;
-    let exchange = null;
+    if(
+        medal < 0 || !Number.isFinite(medal) ||
+        rate <= 0 || !Number.isFinite(rate) ||
+        rental <= 0 || !Number.isFinite(rental) ||
+        exchange <= 0 || !Number.isFinite(exchange)
+    ){
+        alert("総貯メダルは0以上、レート・貸出枚数・交換枚数は0より大きい数値で入力してください");
+        return;
+    }
 
-    if(exchangeType === "nonEqual"){
+    if(
+        replayType === "limit" &&
+        (replayLimit < 0 || !Number.isFinite(replayLimit))
+    ){
+        alert("再プレイ上限は0以上の数値で入力してください");
+        return;
+    }
 
-        if(exchangePreset === "46-52"){
-            rental = 46;
-            exchange = 52;
-        }
+    if(
+        shops.some(shop =>
+            shop.name === name && String(shop.id) !== String(editingShopId)
+        )
+    ){
+        alert("同じ名前の店舗は登録できません");
+        return;
+    }
 
-        else if(exchangePreset === "50-56"){
-            rental = 50;
-            exchange = 56;
-        }
+    const { data: authData, error: authError } =
+        await supabaseClient.auth.getUser();
 
-        else{
-            rental = Number(
-                document.getElementById("rentalValue").value
-            );
+    if(authError || !authData.user){
+        alert("ログイン情報を確認できませんでした。もう一度ログインしてください。");
+        return;
+    }
 
-            exchange = Number(
-                document.getElementById("exchangeValue").value
-            );
+    const values = {
+        user_id: authData.user.id,
+        name,
+        medal: 0,
+        rate,
+        exchange_type: rental === exchange ? "equal" : "nonEqual",
+        rental,
+        exchange,
+        exchange_is_estimated: exchangeIsEstimated,
+        prize_unit: prizeUnit,
+        replay_limit: replayType === "limit" ? replayLimit : null,
+        official_url: officialUrl || null,
+        pworld_url: pworldUrl || null,
+        x_url: xUrl || null,
+        event_days: eventDays,
+        reset_tendency: resetTendency || null,
+        carryover_tendency: carryoverTendency || null,
+        memo: memo || null
+    };
+
+    if(editingShopId){
+        delete values.medal;
+    }
+
+    setBusy("shopSaveButton", true, editingShopId ? "更新中…" : "登録中…");
+    setInlineMessage("shopFormMessage", "店舗情報を保存しています…");
+
+    const shopMutation = editingShopId
+        ? supabaseClient
+            .from("shops")
+            .update(values)
+            .eq("id", editingShopId)
+            .eq("user_id", authData.user.id)
+            .select("id")
+            .single()
+        : supabaseClient.from("shops").insert(values).select("id").single();
+
+    const { data: savedShop, error } = await shopMutation;
+
+    if(error){
+        console.error("店舗保存エラー:", error);
+        setBusy("shopSaveButton", false);
+        setInlineMessage("shopFormMessage", "店舗を保存できませんでした: " + error.message, "error");
+        return;
+    }
+
+    const currentMedal = editingShopId
+        ? Number(shops.find(shop => String(shop.id) === String(editingShopId))?.medal) || 0
+        : 0;
+
+    if(medal !== currentMedal){
+        const { error: medalError } = await supabaseClient.rpc("adjust_shop_medal", {
+            p_shop_id: savedShop.id,
+            p_new_balance: medal,
+            p_type: "manual_adjustment",
+            p_note: editingShopId ? "店舗編集による残高調整" : "店舗登録時の初期残高"
+        });
+
+        if(medalError){
+            console.error("貯メダル残高更新エラー:", medalError);
+            setBusy("shopSaveButton", false);
+            setInlineMessage("shopFormMessage", "店舗情報は保存されましたが、貯メダル残高を更新できませんでした: " + medalError.message, "error");
+            await refreshShopsFromSupabase({ refreshRelated:true });
+            return;
         }
     }
 
-    shops.push({
-        name,
-        medal,
-        rate,
-        exchangeType,
-        rental,
-        exchange,
-        prizeUnit,
-        replayLimit:
-            replayType === "limit"
-            ? replayLimit
-            : null
-    });
-
-    saveData();
-
-    renderShopList();
-
-    document.getElementById("shopName").value = "";
-    document.getElementById("shopMedal").value = "";
-    document.getElementById("replayLimit").value = "";
-    document.getElementById("rentalValue").value = "";
-    document.getElementById("exchangeValue").value = "";
+    const reloaded = await refreshShopsFromSupabase({ refreshRelated:true });
+    setBusy("shopSaveButton", false);
+    if(!reloaded){
+        setInlineMessage("shopFormMessage", "店舗は保存されましたが、最新一覧を取得できませんでした。店舗管理を開き直してください。", "error");
+        return;
+    }
+    cancelShopEdit();
+    setInlineMessage("shopFormMessage", wasEditing ? "店舗情報を更新しました。" : "店舗を登録しました。", "success");
+    render();
+    if(wasEditing){
+        openShopDetail(savedShop.id);
+        setInlineMessage("shopOperationMessage", "店舗情報を更新しました。", "success");
+    }
 }
 
-function renderShopList(){
+function editShop(index){
 
-    const tbody = document
-        .getElementById("shopList");
+    const shop = shops[index];
 
-    tbody.innerHTML = "";
+    if(!shop){
+        return;
+    }
+
+    editingShopId = shop.id;
+    document.getElementById("shopName").value = shop.name;
+    document.getElementById("shopOfficialUrl").value = shop.officialUrl;
+    document.getElementById("shopPworldUrl").value = shop.pworldUrl;
+    document.getElementById("shopXUrl").value = shop.xUrl;
+    document.getElementById("shopEventDays").value = shop.eventDays.join("、");
+    document.getElementById("shopResetTendency").value = shop.resetTendency;
+    document.getElementById("shopCarryoverTendency").value = shop.carryoverTendency;
+    document.getElementById("shopMemo").value = shop.memo;
+    document.getElementById("shopMedal").value = shop.medal;
+    document.getElementById("shopMedal").disabled = true;
+    document.getElementById("shopRate").value = shop.rate;
+    document.getElementById("rentalValue").value = shop.rental;
+    document.getElementById("exchangeValue").value = shop.exchange;
+    document.getElementById("exchangeAccuracy").value = shop.exchangeIsEstimated ? "estimated" : "confirmed";
+    document.getElementById("prizeUnit").value = String(shop.prizeUnit);
+    document.getElementById("replayType").value =
+        shop.replayLimit === null ? "none" : "limit";
+    document.getElementById("replayLimit").value = shop.replayLimit ?? "";
+    toggleReplayInput();
+    document.getElementById("shopSaveButton").innerText = "店舗情報を更新";
+    document.getElementById("shopCancelEditButton").style.display = "block";
+    document.getElementById("shopSection").scrollIntoView({ behavior:"smooth" });
+}
+
+function cancelShopEdit(){
+
+    editingShopId = null;
+    document.getElementById("shopMedal").disabled = false;
+    [
+        "shopName", "shopOfficialUrl", "shopPworldUrl", "shopXUrl",
+        "shopEventDays", "shopResetTendency", "shopCarryoverTendency",
+        "shopMemo", "shopMedal", "shopRate", "rentalValue", "exchangeValue",
+        "replayLimit"
+    ].forEach(id => {
+        document.getElementById(id).value = "";
+    });
+    document.getElementById("prizeUnit").value = "unknown";
+    document.getElementById("exchangeAccuracy").value = "confirmed";
+    document.getElementById("replayType").value = "none";
+    toggleReplayInput();
+    document.getElementById("shopSaveButton").innerText = "店舗登録";
+    document.getElementById("shopCancelEditButton").style.display = "none";
+}
+
+function applyExchangeEstimate(){
+    const rental = Number(document.getElementById("rentalValue").value);
+    let estimate = null;
+    if(Math.abs(rental - 46) < 0.01) estimate = 52;
+    if(Math.abs(rental - 50) < 0.01) estimate = 56;
+    if(estimate === null){
+        setInlineMessage("shopFormMessage", "46枚貸しは52枚、50枚貸しは56枚として推定できます。", "error");
+        return;
+    }
+    document.getElementById("exchangeValue").value = estimate;
+    document.getElementById("exchangeAccuracy").value = "estimated";
+    setInlineMessage("shopFormMessage", `${estimate}枚 / 1,000円を推定値として入力しました。`, "success");
+}
+
+function renderShopManagementList(){
+
+    const list = document.getElementById("shopList");
+    list.innerHTML = "";
 
     const shopSelect = document.getElementById("shop");
 
     shopSelect.innerHTML = `
     <option value="">店舗を選択</option>
-    <option value="未登録店舗">
-        未登録店舗（単発用）
-    </option>
 `;
 
-    shops.forEach(shop=>{
+    if(shops.length === 0){
+        list.innerHTML = `
+            <div class="shop-empty-state">
+                <div class="shop-empty-icon">🏬</div>
+                <h3>登録されている店舗はありません</h3>
+                <p>ホームの「店舗登録」から店舗を登録してください。</p>
+            </div>`;
+        return;
+    }
+
+    shops.forEach((shop,index)=>{
 
         shopSelect.innerHTML += `
-            <option value="${shop.name}">
-                ${shop.name}
+            <option value="${escapeHtml(shop.id)}">
+                ${escapeHtml(shop.name)}
             </option>
         `;
 
-        let exchangeText = "等価";
-
-        if(shop.exchangeType === "nonEqual"){
-            exchangeText = `${shop.rental}枚貸 / ${shop.exchange}枚交換`;
-        }
-
-        tbody.innerHTML += `
-        <tr>
-            <td>${shop.name}</td>
-            <td>${shop.medal}</td>
-            <td>${shop.rate}円</td>
-            <td>${exchangeText}</td>
-            <td>${shop.prizeUnit ?? "200"}円</td>
-            <td>${shop.replayLimit ?? "なし"}</td>
-        </tr>
-        `;
+        list.innerHTML += `
+        <button class="shop-summary-card" onclick="openShopDetail('${escapeHtml(shop.id)}')">
+            <span class="shop-summary-heading">
+                <strong class="shop-summary-name">${escapeHtml(shop.name)}</strong>
+                <small>${shop.rate}円</small>
+            </span>
+            <span class="shop-summary-stat"><small>現在の貯メダル</small><strong>${shop.medal.toLocaleString()}枚</strong></span>
+            <span class="shop-summary-stat"><small>現金化可能額</small><strong>${shop.cashableYen.toLocaleString()}円</strong></span>
+            <span class="shop-summary-sub">${shop.remainderMedals === 0 ? "端数なし・きれいに現金化できます" : `端数 ${shop.remainderMedals.toLocaleString()}枚　あと${shop.medalsToNextPrize.toLocaleString()}枚で次の${shop.prizeUnit.toLocaleString()}円景品`}</span>
+            <span class="shop-summary-arrow">詳細を見る →</span>
+        </button>`;
     });
+}
+
+function setInlineMessage(id, message = "", type = ""){
+    const element = document.getElementById(id);
+    if(!element) return;
+    element.textContent = message;
+    element.className = `inline-message${type ? " " + type : ""}`;
+}
+
+function setBusy(buttonId, busy, busyText){
+    const button = document.getElementById(buttonId);
+    if(!button) return;
+    if(busy){
+        button.dataset.label = button.textContent;
+        button.textContent = busyText;
+        button.disabled = true;
+    }else{
+        button.textContent = button.dataset.label || button.textContent;
+        button.disabled = false;
+    }
+}
+
+async function openShopManagement(){
+    showSection("shopManagementSection");
+    setInlineMessage("shopManagementMessage", "最新の店舗情報を読み込んでいます…");
+    const loaded = await refreshShopsFromSupabase();
+    setInlineMessage(
+        "shopManagementMessage",
+        loaded ? "" : "店舗情報を取得できませんでした。時間をおいて再度お試しください。",
+        loaded ? "" : "error"
+    );
+}
+
+async function refreshShopsFromSupabase({ refreshRelated = false } = {}){
+    const loaded = await loadShopsFromSupabase();
+    if(refreshRelated && loaded){
+        await loadMedalTransactions();
+        await loadRecordsFromSupabase();
+    }
+    renderShopManagementList();
+    renderPlayShopSelect();
+    renderAssetSummary();
+    if(selectedShopId) renderShopDetail();
+    return loaded;
+}
+
+function openShopDetail(shopId){
+    selectedShopId = shopId;
+    showSection("shopDetailSection");
+    renderShopDetail();
+}
+
+function closeShopDetail(){
+    selectedShopId = null;
+    showShopOperation(null);
+    openShopManagement();
+}
+
+function selectedShop(){
+    return shops.find(shop => String(shop.id) === String(selectedShopId));
+}
+
+function renderShopDetail(){
+    const shop = selectedShop();
+    const content = document.getElementById("shopDetailContent");
+    if(!shop){
+        content.innerHTML = "<p>店舗情報が見つかりません。</p>";
+        return;
+    }
+
+    const link = (label, value) => {
+        const url = safeHttpUrl(value);
+        return url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${label}</a>` : "";
+    };
+    const links = [link("公式", shop.officialUrl), link("P-WORLD", shop.pworldUrl), link("X", shop.xUrl)]
+        .filter(Boolean).join("　");
+    const nextText = shop.medalsToNextPrize === 0
+        ? "端数なしで交換できます"
+        : `あと${shop.medalsToNextPrize.toLocaleString()}枚で次の${shop.prizeUnit.toLocaleString()}円景品`;
+
+    content.innerHTML = `
+        <div class="shop-detail-header">
+            <p class="eyebrow">店舗詳細</p>
+            <h2>${escapeHtml(shop.name)}</h2>
+        </div>
+        <div class="asset-grid">
+            <div><span>現在貯メダル</span><strong>${shop.medal.toLocaleString()}枚</strong></div>
+            <div><span>現金化可能額</span><strong>${shop.cashableYen.toLocaleString()}円</strong></div>
+            <div><span>端数</span><strong>${shop.remainderMedals.toLocaleString()}枚</strong></div>
+        </div>
+        <p class="next-prize-message">${nextText}</p>
+        <dl class="shop-facts">
+            <div><dt>レート</dt><dd>${shop.rate}円</dd></div>
+            <div><dt>貸出</dt><dd>${shop.rental}枚 / 1,000円</dd></div>
+            <div><dt>交換</dt><dd>${shop.exchange}枚 / 1,000円${shop.exchangeIsEstimated ? "（推定）" : ""}</dd></div>
+            <div><dt>最小景品</dt><dd>${shop.prizeUnit.toLocaleString()}円</dd></div>
+            <div><dt>再プレイ上限</dt><dd>${shop.replayLimit === null ? "上限なし" : shop.replayLimit.toLocaleString() + "枚"}</dd></div>
+        </dl>
+        <div class="strategy-card">
+            <h3>店舗攻略情報</h3>
+            <p><span>イベント日</span>${escapeHtml(shop.eventDays.join("、") || "未登録")}</p>
+            <p><span>リセット傾向</span>${escapeHtml(shop.resetTendency || "未登録")}</p>
+            <p><span>据え置き傾向</span>${escapeHtml(shop.carryoverTendency || "未登録")}</p>
+            <p><span>メモ</span>${escapeHtml(shop.memo || "未登録")}</p>
+            ${links ? `<div class="shop-links">${links}</div>` : ""}
+        </div>`;
+    renderShopMedalHistory();
+}
+
+function openShopEditFromDetail(){
+    const index = shops.findIndex(shop => String(shop.id) === String(selectedShopId));
+    if(index < 0) return;
+    showSection("shopSection");
+    editShop(index);
+}
+
+function showShopOperation(type){
+    const shop = selectedShop();
+    document.getElementById("shopAdjustPanel").style.display = type === "adjust" ? "block" : "none";
+    document.getElementById("shopWithdrawPanel").style.display = type === "withdraw" ? "block" : "none";
+    setInlineMessage("shopOperationMessage");
+    if(!shop) return;
+    if(type === "adjust"){
+        document.getElementById("adjustCurrentBalance").textContent = `現在：${shop.medal.toLocaleString()}枚`;
+        document.getElementById("adjustNewBalance").value = shop.medal;
+        document.getElementById("adjustNote").value = "";
+        updateAdjustmentPreview();
+    }
+    if(type === "withdraw"){
+        document.getElementById("withdrawCashAmount").value = "";
+        document.getElementById("withdrawActualBalance").value = "";
+        document.getElementById("withdrawNote").value = "";
+        updateWithdrawalPreview();
+    }
+}
+
+function calculateAssetPreview(medal, exchange, prizeUnit){
+    const unitMedals = Math.ceil(exchange * prizeUnit / 1000);
+    const blocks = unitMedals > 0 ? Math.floor(Math.max(medal, 0) / unitMedals) : 0;
+    return { cashableYen: blocks * prizeUnit, unitMedals };
+}
+
+function updateAdjustmentPreview(){
+    const shop = selectedShop();
+    if(!shop) return;
+    const next = Number(document.getElementById("adjustNewBalance").value);
+    const preview = document.getElementById("adjustPreview");
+    if(!Number.isInteger(next) || next < 0){
+        preview.textContent = "0以上の整数を入力してください。";
+        return;
+    }
+    const oldValue = shop.cashableYen;
+    const newValue = calculateAssetPreview(next, shop.exchange, shop.prizeUnit).cashableYen;
+    const medalDiff = next - shop.medal;
+    const profitDiff = newValue - oldValue;
+    preview.innerHTML = `差分 <strong>${formatSigned(medalDiff)}枚</strong><br>収支への影響 <strong>${formatSigned(profitDiff)}円</strong>`;
+}
+
+function updateWithdrawalPreview(){
+    const shop = selectedShop();
+    if(!shop) return;
+    const cash = Number(document.getElementById("withdrawCashAmount").value);
+    const actualInput = document.getElementById("withdrawActualBalance").value;
+    const preview = document.getElementById("withdrawPreview");
+    if(!Number.isInteger(cash) || cash <= 0){
+        preview.textContent = "換金額を入力すると使用枚数を表示します。";
+        return;
+    }
+    const estimatedRemoved = Math.ceil(shop.exchange * cash / 1000);
+    const estimatedBalance = shop.medal - estimatedRemoved;
+    let html = `${cash.toLocaleString()}円換金<br>推定使用メダル <strong>${estimatedRemoved.toLocaleString()}枚</strong><br>推定残高 <strong>${estimatedBalance.toLocaleString()}枚</strong>`;
+    if(actualInput !== ""){
+        const actual = Number(actualInput);
+        if(Number.isInteger(actual) && actual >= 0 && actual < shop.medal){
+            const removed = shop.medal - actual;
+            const inferred = removed / (cash / 1000);
+            html += `<br>実際の減少 ${removed.toLocaleString()}枚<br>実績交換率 <strong>${inferred.toFixed(2).replace(/\.00$/, "")}枚 / 1,000円</strong>`;
+        }
+    }
+    preview.innerHTML = html + "<br>収支への影響 <strong>±0円</strong>";
+}
+
+function formatSigned(value){
+    const number = Number(value) || 0;
+    return `${number > 0 ? "+" : number === 0 ? "±" : ""}${number.toLocaleString()}`;
+}
+
+async function submitMedalAdjustment(){
+    const shop = selectedShop();
+    const next = Number(document.getElementById("adjustNewBalance").value);
+    const note = document.getElementById("adjustNote").value.trim();
+    if(!shop || !Number.isInteger(next) || next < 0 || next === shop.medal){
+        setInlineMessage("shopOperationMessage", "現在と異なる0以上の整数を入力してください。", "error");
+        return;
+    }
+    setBusy("adjustSubmitButton", true, "保存中…");
+    setInlineMessage("shopOperationMessage", "残高を保存しています…");
+    const { error } = await supabaseClient.rpc("adjust_shop_medal_balance", {
+        p_shop_id: shop.id, p_new_balance: next, p_note: note || null
+    });
+    if(error){
+        setBusy("adjustSubmitButton", false);
+        setInlineMessage("shopOperationMessage", `保存できませんでした：${error.message}`, "error");
+        return;
+    }
+    await refreshShopDetailData();
+    showShopOperation(null);
+    setInlineMessage("shopOperationMessage", "貯メダル残高を修正し、収支へ反映しました。", "success");
+}
+
+async function submitWithdrawal(){
+    const shop = selectedShop();
+    const cash = Number(document.getElementById("withdrawCashAmount").value);
+    const actualText = document.getElementById("withdrawActualBalance").value;
+    const actual = actualText === "" ? null : Number(actualText);
+    const note = document.getElementById("withdrawNote").value.trim();
+    if(!shop || !Number.isInteger(cash) || cash <= 0 || cash % shop.prizeUnit !== 0){
+        setInlineMessage("shopOperationMessage", `換金額は${shop?.prizeUnit || 1}円単位で入力してください。`, "error");
+        return;
+    }
+    if(actual !== null && (!Number.isInteger(actual) || actual < 0 || actual >= shop.medal)){
+        setInlineMessage("shopOperationMessage", "換金後の実残高を正しく入力してください。", "error");
+        return;
+    }
+    const estimatedRemoved = Math.ceil(shop.exchange * cash / 1000);
+    const finalBalance = actual ?? shop.medal - estimatedRemoved;
+    if(finalBalance < 0){
+        setInlineMessage("shopOperationMessage", "現在の貯メダルでは不足しています。", "error");
+        return;
+    }
+    if(!confirm(`${cash.toLocaleString()}円を換金します。\n使用メダル：${(shop.medal - finalBalance).toLocaleString()}枚\n換金後：${finalBalance.toLocaleString()}枚\nよろしいですか？`)) return;
+
+    setBusy("withdrawSubmitButton", true, "換金を記録中…");
+    const { data, error } = await supabaseClient.rpc("withdraw_shop_medals", {
+        p_shop_id: shop.id, p_cash_amount: cash, p_actual_balance: actual, p_note: note || null
+    });
+    if(error){
+        setBusy("withdrawSubmitButton", false);
+        setInlineMessage("shopOperationMessage", `換金を記録できませんでした：${error.message}`, "error");
+        return;
+    }
+    const transaction = Array.isArray(data) ? data[0] : data;
+    const inferred = Number(transaction?.inferred_exchange);
+    const previousExchange = shop.exchange;
+    await refreshShopDetailData();
+    showShopOperation(null);
+    setInlineMessage("shopOperationMessage", "換金を記録しました。収支への影響は±0円です。", "success");
+
+    if(actual !== null && Number.isFinite(inferred) && Math.abs(inferred - previousExchange) >= 0.01){
+        const approved = confirm(`登録交換率：${previousExchange}枚 / 1,000円\n今回の実績：${inferred.toFixed(2)}枚 / 1,000円\n店舗情報を今回の実績へ変更しますか？`);
+        if(approved){
+            const { error: updateError } = await supabaseClient.rpc("confirm_shop_exchange_rate", {
+                p_shop_id: shop.id, p_exchange: inferred
+            });
+            if(updateError){
+                setInlineMessage("shopOperationMessage", `換金は記録済みですが、交換率を更新できませんでした：${updateError.message}`, "error");
+            }else{
+                await refreshShopDetailData();
+                setInlineMessage("shopOperationMessage", `交換率を${inferred.toFixed(2)}枚 / 1,000円へ更新しました。`, "success");
+            }
+        }
+    }
+}
+
+async function refreshShopDetailData(){
+    await loadShopsFromSupabase();
+    await loadMedalTransactions();
+    await loadRecordsFromSupabase();
+    render();
+    renderShopDetail();
+    setBusy("adjustSubmitButton", false);
+    setBusy("withdrawSubmitButton", false);
+}
+
+function renderShopMedalHistory(){
+    const shop = selectedShop();
+    const container = document.getElementById("shopMedalHistory");
+    if(!shop || !container) return;
+    const transactionItems = medalTransactions
+        .filter(item => String(item.shopId) === String(shop.id))
+        .map(item => ({ ...item, sortDate: item.createdAt }));
+    const relatedIds = new Set(transactionItems.map(item => item.relatedRecordId).filter(Boolean));
+    const legacyPlayItems = records
+        .filter(record => record.sourceType === "play" && String(record.shopId) === String(shop.id) && !relatedIds.has(record.id))
+        .map(record => ({
+            id: record.id, type: "play", amount: record.medalDelta,
+            balanceBefore: record.startMedal, balanceAfter: record.endMedal,
+            cashAmount: 0, profitEffect: record.profit, note: record.machine,
+            sortDate: record.date
+        }));
+    const items = [...transactionItems, ...legacyPlayItems]
+        .sort((a,b) => new Date(b.sortDate) - new Date(a.sortDate));
+    if(!items.length){
+        container.innerHTML = '<p class="empty-state">履歴はまだありません。</p>';
+        return;
+    }
+    const labels = {
+        play:["🎰", "稼働"], withdraw:["💴", "換金"],
+        manual_adjustment:["🔧", "残高修正"], rollback:["↩️", "巻き戻し"]
+    };
+    container.innerHTML = items.map(item => {
+        const [icon, label] = labels[item.type] || ["•", item.type];
+        const date = new Date(item.sortDate).toLocaleDateString("ja-JP");
+        return `<article class="transaction-item">
+            <div><span class="transaction-icon">${icon}</span><strong>${label}</strong><time>${escapeHtml(date)}</time></div>
+            <p>${formatSigned(item.amount)}枚${item.balanceBefore === null ? "" : `　${item.balanceBefore?.toLocaleString()}枚 → ${item.balanceAfter?.toLocaleString()}枚`}</p>
+            ${item.cashAmount ? `<p>${item.cashAmount.toLocaleString()}円</p>` : ""}
+            <p>収支 ${formatSigned(item.profitEffect)}円</p>
+            ${item.note ? `<small>${escapeHtml(item.note)}</small>` : ""}
+        </article>`;
+    }).join("");
+}
+
+async function deleteShop(index){
+
+    const target = shops[index];
+
+    if(!target || !confirm(`店舗「${target.name}」を削除しますか？`)){
+        return;
+    }
+
+    const { data: authData, error: authError } =
+        await supabaseClient.auth.getUser();
+
+    if(authError || !authData.user){
+        alert("ログイン情報を確認できませんでした");
+        return;
+    }
+
+    const { error } = await supabaseClient
+        .from("shops")
+        .delete()
+        .eq("id", target.id)
+        .eq("user_id", authData.user.id);
+
+    if(error){
+        if(error.code === "23503"){
+            alert("稼働履歴や貯メダル変更履歴がある店舗は削除できません。履歴保全のため、店舗情報を残してください。");
+        }else{
+            alert("店舗を削除できませんでした: " + error.message);
+        }
+        return;
+    }
+
+    await loadShopsFromSupabase();
+    render();
+    if(String(selectedShopId) === String(target.id)){
+        selectedShopId = null;
+        openShopManagement();
+    }
+}
+
+function deleteSelectedShop(){
+    const index = shops.findIndex(shop => String(shop.id) === String(selectedShopId));
+    if(index >= 0) deleteShop(index);
 }
 
 function renderPlayShopSelect(){
@@ -1207,8 +2348,8 @@ function renderPlayShopSelect(){
     shops.forEach(shop=>{
 
         select.innerHTML += `
-            <option value="${shop.name}">
-                ${shop.name}
+            <option value="${escapeHtml(shop.id)}">
+                ${escapeHtml(shop.name)}
             </option>
         `;
     });
@@ -1216,24 +2357,49 @@ function renderPlayShopSelect(){
 
 function startPlay(){
 
-    const shop = document.getElementById("playShop").value;
+    if(
+        currentPlayData &&
+        !confirm("現在の稼働中データを破棄して新しい稼働を開始しますか？")
+    ){
+        return;
+    }
 
+    const shopId = document.getElementById("playShop").value;
     const machine = document.getElementById("playMachine").value;
+    const selectedShop = shops.find(
+        shop => String(shop.id) === String(shopId)
+    );
 
-    if(!shop || !machine){
+    if(!selectedShop || !machine){
         alert("店舗と機種を入力してください");
         return;
     }
 
+    if(selectedShop.rental <= 0 || selectedShop.exchange <= 0){
+        alert("店舗の貸出枚数・交換枚数を設定してください");
+        return;
+    }
+
     currentPlayData = {
-        shop,
+        shop: selectedShop.name,
+        shopId: selectedShop.id,
         machine,
-        usedMedal:0,
-        cashInvestment:0
+        startMedal: selectedShop.medal,
+        rate: selectedShop.rate,
+        rental: selectedShop.rental,
+        exchange: selectedShop.exchange,
+        replayLimit: selectedShop.replayLimit,
+        prizeUnit: selectedShop.prizeUnit,
+        cashInvestment:0,
+        confirmationType:"none",
+        confirmationNote:"",
+        note:"",
+        startedAt:new Date().toISOString()
     };
 
     document.getElementById("currentPlay").style.display = "block";
 
+    saveCurrentPlayBackup();
     updateCurrentPlayUI();
 }
 
@@ -1247,126 +2413,146 @@ function updateCurrentPlayUI(){
 
     document.getElementById("currentMachine").innerText = currentPlayData.machine;
 
-    document.getElementById("currentUsedMedal").innerText = currentPlayData.usedMedal;
+    document.getElementById("currentStartMedal").innerText = currentPlayData.startMedal;
+    document.getElementById("currentRental").innerText = currentPlayData.rental;
+    document.getElementById("currentExchange").innerText = currentPlayData.exchange;
+    document.getElementById("playCashInvestment").value =
+        currentPlayData.cashInvestment || "";
+    document.getElementById("playEndMedal").value = currentPlayData.endMedal ?? "";
+    document.getElementById("playHours").value = currentPlayData.hours ?? "";
+    document.getElementById("playExpected").value = currentPlayData.expected ?? "";
+    document.getElementById("playConfirmationType").value = currentPlayData.confirmationType || "none";
+    document.getElementById("playConfirmationNote").value = currentPlayData.confirmationNote || "";
+    document.getElementById("playNote").value = currentPlayData.note || "";
+    togglePlayConfirmationNote(false);
 
-    document.getElementById("currentCash").innerText = currentPlayData.cashInvestment;
+    document.getElementById("currentCashLentMedal").innerText =
+        (Number(currentPlayData.cashInvestment) || 0) / 1000 *
+        Number(currentPlayData.rental);
+
+    const endMedal = Number(currentPlayData.endMedal);
+    const hasEndMedal = currentPlayData.endMedal !== undefined &&
+        currentPlayData.endMedal !== "";
+    const medalDelta = hasEndMedal
+        ? endMedal - Number(currentPlayData.startMedal)
+        : 0;
+    const cashableDelta = calculateCashableDeltaYen(
+        medalDelta,
+        currentPlayData.exchange,
+        currentPlayData.prizeUnit
+    );
+    const calculatedProfit =
+        cashableDelta - (Number(currentPlayData.cashInvestment) || 0);
+
+    document.getElementById("currentMedalDelta").innerText =
+        `${medalDelta >= 0 ? "+" : ""}${medalDelta}`;
+    document.getElementById("currentCashableDelta").innerText =
+        cashableDelta.toLocaleString();
+    document.getElementById("currentCalculatedProfit").innerText =
+        calculatedProfit.toLocaleString();
 }
 
-function addMedalInvestment(amount){
+function updatePlayCashInvestment(){
 
     if(!currentPlayData){
         return;
     }
 
-    const selectedShop = shops.find(
-        s => s.name === currentPlayData.shop
+    currentPlayData.cashInvestment = Math.max(
+        Number(document.getElementById("playCashInvestment").value) || 0,
+        0
     );
 
-    if(!selectedShop){
-        return;
-    }
-
-    if(!currentPlayData.replayUsed){
-        currentPlayData.replayUsed = 0;
-    }
-
-    const replayLimit = selectedShop.replayLimit ?? Infinity;
-
-    const remainingReplay =
-        replayLimit - currentPlayData.replayUsed;
-
-    let replayUse = 0;
-
-    if(remainingReplay > 0 && selectedShop.medal > 0){
-
-        replayUse = Math.min(
-            amount,
-            remainingReplay,
-            selectedShop.medal
-        );
-    }
-
-    const cashUse = amount - replayUse;
-
-    currentPlayData.usedMedal += replayUse;
-
-    currentPlayData.replayUsed += replayUse;
-
-    if(cashUse > 0){
-
-        const rental = selectedShop.rental || 50;
-
-        const cashNeeded = Math.ceil(
-            (cashUse / rental) * 1000 / 1000
-        ) * 1000;
-
-        currentPlayData.cashInvestment += cashNeeded;
-    }
-
+    saveCurrentPlayBackup();
     updateCurrentPlayUI();
 }
 
-function addCashInvestment(){
+function updateCurrentPlayDraft(){
 
     if(!currentPlayData){
         return;
     }
 
-    currentPlayData.cashInvestment += 1000;
-
+    currentPlayData.endMedal = document.getElementById("playEndMedal").value;
+    currentPlayData.hours = document.getElementById("playHours").value;
+    currentPlayData.expected = document.getElementById("playExpected").value;
+    currentPlayData.confirmationType = document.getElementById("playConfirmationType").value || "none";
+    currentPlayData.confirmationNote = currentPlayData.confirmationType === "other"
+        ? document.getElementById("playConfirmationNote").value
+        : "";
+    currentPlayData.note = document.getElementById("playNote").value;
+    saveCurrentPlayBackup();
     updateCurrentPlayUI();
 }
 
-function finishPlay(){
+async function finishPlay(){
 
     if(!currentPlayData){
         return;
     }
 
-    const recovery = Number(
-        document.getElementById("playRecovery").value
-    );
+    const endMedalValue = document.getElementById("playEndMedal").value;
 
-    const selectedShop = shops.find(
-        s => s.name === currentPlayData.shop
-    );
-
-    if(selectedShop){
-
-        selectedShop.medal =
-            selectedShop.medal
-            - (currentPlayData.replayUsed || 0)
-            + recovery;
-
-        if(selectedShop.medal < 0){
-            selectedShop.medal = 0;
-        }
-
-        saveData();
-
-        renderShopList();
-        renderAssetSummary();
+    if(endMedalValue === ""){
+        alert("終了時の会員カード総貯メダルを入力してください");
+        return;
     }
 
-    document.getElementById("date").value = new Date()
-        .toISOString()
-        .split("T")[0];
+    document.getElementById("date").value =
+        getLocalDateString();
 
-    document.getElementById("shop").value = currentPlayData.shop;
+    document.getElementById("shop").value =
+        currentPlayData.shopId;
 
-    document.getElementById("machine").value = currentPlayData.machine;
+    document.getElementById("machine").value =
+        currentPlayData.machine;
 
-    document.getElementById("usedMedal").value = currentPlayData.replayUsed || 0;
+    document.getElementById("startMedal").value =
+        currentPlayData.startMedal;
 
-    document.getElementById("cashInvestment").value = currentPlayData.cashInvestment;
+    document.getElementById("cashInvestment").value =
+        currentPlayData.cashInvestment;
 
-    document.getElementById("recoveryMedal").value = recovery;
+    document.getElementById("endMedal").value = endMedalValue;
+
+    const enteredHours =
+        document.getElementById("playHours").value;
+
+    const elapsedHours = currentPlayData.startedAt
+        ? Math.max(
+            (Date.now() - new Date(currentPlayData.startedAt).getTime()) /
+            3600000,
+            0
+        )
+        : 0;
+
+    document.getElementById("hours").value = enteredHours === ""
+        ? elapsedHours.toFixed(1)
+        : enteredHours;
+
+    document.getElementById("expected").value =
+        document.getElementById("playExpected").value;
+
+    document.getElementById("confirmationType").value =
+        document.getElementById("playConfirmationType").value;
+    document.getElementById("confirmationNote").value =
+        document.getElementById("playConfirmationType").value === "other"
+        ? document.getElementById("playConfirmationNote").value
+        : "";
+    document.getElementById("playRecordNote").value =
+        document.getElementById("playNote").value;
+
+    const saved = await addRecord(true);
+
+    if(!saved){
+        return;
+    }
 
     currentPlayData = null;
+    clearCurrentPlayBackup();
 
-    document.getElementById("currentPlay").style.display = "none";
-
-    addRecord();
+    document.getElementById("currentPlay").style.display =
+        "none";
 }
 
 function changeIncomeType(){
@@ -1390,14 +2576,14 @@ function renderChart(){
     );
 
     let filteredRecords = sortedRecords;
+    let periodStart = null;
 
     const now = new Date();
 
     if(graphPeriod === "month"){
-
         const target = new Date();
-
         target.setMonth(now.getMonth() - 1);
+        periodStart = target;
 
         filteredRecords = sortedRecords.filter(r=>
             new Date(r.date) >= target
@@ -1405,10 +2591,9 @@ function renderChart(){
     }
 
     if(graphPeriod === "halfyear"){
-
         const target = new Date();
-
         target.setMonth(now.getMonth() - 6);
+        periodStart = target;
 
         filteredRecords = sortedRecords.filter(r=>
             new Date(r.date) >= target
@@ -1416,51 +2601,69 @@ function renderChart(){
     }
 
     if(graphPeriod === "year"){
-
         const target = new Date();
-
         target.setFullYear(now.getFullYear() - 1);
+        periodStart = target;
 
         filteredRecords = sortedRecords.filter(r=>
             new Date(r.date) >= target
         );
     }
 
-    let cumulative = 0;
+    const dailyProfitMap = {};
 
-    const labels = [];
+    filteredRecords.forEach(record=>{
 
-    const data = [];
+        const dateKey =
+            normalizeDateString(record.date);
 
-    filteredRecords.forEach(r=>{
+        if(!dailyProfitMap[dateKey]){
+            dailyProfitMap[dateKey] = 0;
+        }
 
-        cumulative += r.profit;
-
-        labels.push(r.date);
-
-        data.push(cumulative);
+        dailyProfitMap[dateKey] +=
+            toNumber(record.profit);
     });
 
-    const ctx = document
-        .getElementById("profitChart")
-        .getContext("2d");
+    const labels =
+        Object.keys(dailyProfitMap).sort();
+
+    let cumulative = periodStart
+        ? sortedRecords
+            .filter(record => new Date(record.date) < periodStart)
+            .reduce((sum,record) => sum + toNumber(record.profit), 0)
+        : 0;
+
+    const data = labels.map(date=>{
+
+        cumulative += dailyProfitMap[date];
+
+        return cumulative;
+    });
+
+    const canvas =
+        document.getElementById("profitChart");
+
+    if(!canvas){
+        return;
+    }
+
+    const ctx =
+        canvas.getContext("2d");
 
     if(profitChart){
         profitChart.destroy();
     }
 
     profitChart = new Chart(ctx,{
-
         type:"line",
 
         data:{
-            labels:labels,
+            labels,
 
             datasets:[{
                 label:"累計収支",
-
-                data:data,
-
+                data,
                 tension:0.2
             }]
         },
@@ -1504,23 +2707,42 @@ function toNumber(value){
     return Number(value) || 0;
 }
 
+function calculateCashableDeltaYen(medalDelta,exchange,prizeUnit){
+
+    if(!exchange || exchange <= 0 || !prizeUnit || prizeUnit <= 0){
+        return 0;
+    }
+
+    const direction = Math.sign(medalDelta);
+    const absoluteValue = Math.abs(medalDelta) / exchange * 1000;
+
+    return direction * Math.floor(absoluteValue / prizeUnit) * prizeUnit;
+}
+
+function escapeHtml(value){
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+function safeHttpUrl(value){
+    try{
+        const url = new URL(value);
+        return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+    }catch{
+        return "";
+    }
+}
+
 function renderAssetSummary(){
 
     let totalAsset = 0;
 
     shops.forEach(shop=>{
-
-        if(!shop.exchange){
-            return;
-        }
-
-        const prizeUnit = shop.prizeUnit || 200;
-
-        const rawValue =
-            (shop.medal / shop.exchange) * 1000;
-
-        totalAsset +=
-            Math.floor(rawValue / prizeUnit) * prizeUnit;
+        totalAsset += shop.cashableYen;
     });
 
     document.getElementById('totalMedalAsset').innerText =
@@ -1530,20 +2752,26 @@ function renderAssetSummary(){
 
     const today = getLocalDateString(now);
 
-document.getElementById('todayProfitCard').innerText =
-    records
-    .filter(r => normalizeDateString(r.date) === today)
-    .reduce((s,r) => s + toNumber(r.profit),0)
-    .toLocaleString();
+    document.getElementById('todayProfitCard').innerText =
+        records
+        .filter(r => normalizeDateString(r.date) === today)
+        .reduce((s,r) => s + toNumber(r.profit),0)
+        .toLocaleString();
 
-    const monthStart = new Date(now.getFullYear(),now.getMonth(),1);
+    const monthStart =
+        new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            1
+        );
 
     document.getElementById('monthProfitCard').innerText =
         records
-        .filter(r=>new Date(r.date)>=monthStart)
-        .reduce((s,r)=>s+r.profit,0)
+        .filter(r => new Date(r.date) >= monthStart)
+        .reduce((s,r) => s + r.profit,0)
         .toLocaleString();
 }
+
 function addCounterItem(){
 
     const color = document.getElementById("counterColor").value;
@@ -1584,7 +2812,7 @@ function renderProfileItems(){
             gap:8px;
             margin-bottom:8px;
         ">
-            <span>${item.color} ${item.name}</span>
+            <span>${escapeHtml(item.color)} ${escapeHtml(item.name)}</span>
 
             <button
             style="width:auto;background:red;padding:6px 10px;"
@@ -1621,14 +2849,16 @@ function saveCounterProfile(){
     activeCounterProfile = counterProfiles.length - 1;
 
     localStorage.setItem(
-        "counterProfiles",
+        counterStorageKey("counterProfiles"),
         JSON.stringify(counterProfiles)
     );
 
     localStorage.setItem(
-        "activeCounterProfile",
+        counterStorageKey("activeCounterProfile"),
         activeCounterProfile
     );
+
+    syncCounterDataToSupabase();
 
     editingProfileItems = [];
 
@@ -1662,7 +2892,7 @@ function renderProfileSelect(){
 
         select.innerHTML += `
             <option value="${index}">
-                ${profile.name}
+                ${escapeHtml(profile.name)}
             </option>
         `;
     });
@@ -1677,9 +2907,11 @@ function changeCounterProfile(){
     );
 
     localStorage.setItem(
-        "activeCounterProfile",
+        counterStorageKey("activeCounterProfile"),
         activeCounterProfile
     );
+
+    syncCounterDataToSupabase();
 
     renderCounter();
 }
@@ -1708,11 +2940,23 @@ function changeCounter(item,value){
     }
 
     localStorage.setItem(
-        "counterData",
+        counterStorageKey("counterData"),
         JSON.stringify(counterData)
     );
 
+    syncCounterDataToSupabase();
+
     renderCounter();
+}
+
+function changeCounterByIndex(index,value){
+
+    const profile = counterProfiles[activeCounterProfile];
+    const item = profile?.items?.[index];
+
+    if(item){
+        changeCounter(item.name, value);
+    }
 }
 
 function renderCounter(){
@@ -1761,7 +3005,7 @@ if(selfGameText){
         counterData[profileKey] = {};
     }
 
-    profile.items.forEach(item=>{
+    profile.items.forEach((item,index)=>{
 
         const key = item.name;
 
@@ -1780,11 +3024,11 @@ if(selfGameText){
         <div class="counter-tile">
 
             <div class="counter-color">
-                ${item.color}
+                ${escapeHtml(item.color)}
             </div>
 
             <div class="counter-name">
-                ${item.name}
+                ${escapeHtml(item.name)}
             </div>
 
             <div class="counter-count">
@@ -1798,13 +3042,13 @@ if(selfGameText){
             <div class="counter-buttons">
                 <button
                 class="counter-plus"
-                onclick="changeCounter('${key}',1)">
+                onclick="changeCounterByIndex(${index},1)">
                 ＋
                 </button>
 
                 <button
                 class="counter-minus"
-                onclick="changeCounter('${key}',-1)">
+                onclick="changeCounterByIndex(${index},-1)">
                 －
                 </button>
             </div>
@@ -1827,9 +3071,11 @@ function resetCounter(){
     }
 
     localStorage.setItem(
-        "counterData",
+        counterStorageKey("counterData"),
         JSON.stringify(counterData)
     );
+
+    syncCounterDataToSupabase();
 
     document.getElementById(
         "counterStartGame"
@@ -1843,6 +3089,53 @@ function resetCounter(){
         "counterSelfGame"
     ).innerText = "0";
 
+    renderCounter();
+}
+
+function deleteCounterProfile(){
+
+    const target = counterProfiles[activeCounterProfile];
+
+    if(!target || !confirm(`プロファイル「${target.name}」を削除しますか？`)){
+        return;
+    }
+
+    const deletedIndex = activeCounterProfile;
+    const previousProfiles = [...counterProfiles];
+    const previousData = {...counterData};
+
+    counterProfiles.splice(deletedIndex, 1);
+    activeCounterProfile = Math.min(
+        deletedIndex,
+        Math.max(counterProfiles.length - 1, 0)
+    );
+    counterData = {};
+
+    counterProfiles.forEach((profile,newIndex) => {
+        const oldIndex = newIndex < deletedIndex
+            ? newIndex
+            : newIndex + 1;
+        const oldProfile = previousProfiles[oldIndex];
+        const oldKey = `profile_${oldIndex}_${oldProfile.name}`;
+        const newKey = `profile_${newIndex}_${profile.name}`;
+        counterData[newKey] = previousData[oldKey] || {};
+    });
+
+    localStorage.setItem(
+        counterStorageKey("counterProfiles"),
+        JSON.stringify(counterProfiles)
+    );
+    localStorage.setItem(
+        counterStorageKey("activeCounterProfile"),
+        String(activeCounterProfile)
+    );
+    localStorage.setItem(
+        counterStorageKey("counterData"),
+        JSON.stringify(counterData)
+    );
+
+    syncCounterDataToSupabase();
+    renderProfileSelect();
     renderCounter();
 }
 function toggleManualRecord(){
@@ -1859,11 +3152,43 @@ function toggleManualRecord(){
         : "none";
 }
 
+function confirmationLabel(value){
+    return ({
+        none:"なし",
+        setting_6:"6確",
+        setting_5_6:"56確",
+        setting_4_5_6:"456確",
+        setting_3_plus:"3以上",
+        setting_2_plus:"2以上",
+        high_setting_behavior:"高設定挙動",
+        other:"その他"
+    })[value] || "なし";
+}
+
+function togglePlayConfirmationNote(saveDraft = true){
+    const type = document.getElementById("playConfirmationType").value;
+    const area = document.getElementById("playConfirmationNoteArea");
+    const input = document.getElementById("playConfirmationNote");
+    area.style.display = type === "other" ? "block" : "none";
+    if(type !== "other") input.value = "";
+    if(saveDraft) updateCurrentPlayDraft();
+}
+
+function toggleManualConfirmationNote(){
+    const type = document.getElementById("confirmationType").value;
+    const area = document.getElementById("confirmationNoteArea");
+    const input = document.getElementById("confirmationNote");
+    area.style.display = type === "other" ? "block" : "none";
+    if(type !== "other") input.value = "";
+}
+
 function showHome(){
 
     const sections = [
         'playSection',
         'shopSection',
+        'shopManagementSection',
+        'shopDetailSection',
         'analysisSection',
         'counterSection',
         'shopAnalysisCard',
@@ -1892,6 +3217,8 @@ function showSection(sectionId){
     const sections = [
         'playSection',
         'shopSection',
+        'shopManagementSection',
+        'shopDetailSection',
         'analysisSection',
         'counterSection',
         'shopAnalysisCard',
@@ -1933,8 +3260,217 @@ function showSection(sectionId){
         target.scrollIntoView({behavior:'smooth'});
     }
 }
-render();
-</script>
 
+const SUPABASE_URL = "https://addkjzxqenzbtzfdedup.supabase.co";
+const SUPABASE_KEY = "sb_publishable_i6FVjuH06ezYb2DdhbSAfA_YS-a9cLm";
+
+const supabaseClient = supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
+
+let sessionRefreshPromise = null;
+
+function refreshSession(){
+
+    if(sessionRefreshPromise){
+        return sessionRefreshPromise;
+    }
+
+    sessionRefreshPromise = showAppForCurrentSession()
+        .finally(() => {
+            sessionRefreshPromise = null;
+        });
+
+    return sessionRefreshPromise;
+}
+
+async function signupUser(){
+
+    const email =
+        document.getElementById("authEmail").value.trim();
+
+    const password =
+        document.getElementById("authPassword").value;
+
+    const message =
+        document.getElementById("authMessage");
+
+    if(!email || !password){
+        message.innerText =
+            "メールアドレスとパスワードを入力してください";
+        return;
+    }
+
+    if(password.length < 8){
+        message.innerText =
+            "パスワードは8文字以上で入力してください";
+        return;
+    }
+
+    const { error } =
+        await supabaseClient.auth.signUp({
+            email,
+            password
+        });
+
+    if(error){
+        message.innerText =
+            "登録エラー: " + error.message;
+        return;
+    }
+
+    message.innerText =
+        "確認メールを送信しました。メールを確認してください。";
+}
+
+
+async function loginUser(){
+
+    const email =
+        document.getElementById("authEmail").value.trim();
+
+    const password =
+        document.getElementById("authPassword").value;
+
+    const message =
+        document.getElementById("authMessage");
+
+    if(!email || !password){
+        message.innerText =
+            "メールアドレスとパスワードを入力してください";
+        return;
+    }
+
+    const { error } =
+        await supabaseClient.auth.signInWithPassword({
+            email,
+            password
+        });
+
+    if(error){
+        message.innerText =
+            "ログインエラー: " + error.message;
+        return;
+    }
+
+    await refreshSession();
+}
+
+async function resetPassword(){
+
+    const email =
+        document.getElementById("authEmail").value.trim();
+
+    const message =
+        document.getElementById("authMessage");
+
+    if(!email){
+        message.innerText = "メールアドレスを入力してください";
+        return;
+    }
+
+    const { error } =
+        await supabaseClient.auth.resetPasswordForEmail(email);
+
+    message.innerText = error
+        ? "再設定エラー: " + error.message
+        : "パスワード再設定メールを送信しました。";
+}
+
+async function setNewPassword(){
+
+    const password = document.getElementById("newPassword").value;
+    const message = document.getElementById("authMessage");
+
+    if(password.length < 8){
+        message.innerText = "新しいパスワードは8文字以上で入力してください";
+        return;
+    }
+
+    const { error } = await supabaseClient.auth.updateUser({ password });
+
+    if(error){
+        message.innerText = "再設定エラー: " + error.message;
+        return;
+    }
+
+    message.innerText = "パスワードを更新しました。";
+    document.getElementById("newPasswordArea").style.display = "none";
+}
+
+async function logoutUser(){
+
+    const { error } = await supabaseClient.auth.signOut();
+
+    if(error){
+        alert("ログアウトできませんでした: " + error.message);
+    }
+}
+
+
+async function showAppForCurrentSession(){
+
+    const { data } =
+        await supabaseClient.auth.getSession();
+
+    const session = data.session;
+
+    const authScreen =
+        document.getElementById("authScreen");
+
+    const appScreen =
+        document.getElementById("appScreen");
+
+    if(session){
+
+    authScreen.style.display = "none";
+    appScreen.style.display = "block";
+
+    currentUserId = session.user.id;
+
+    await loadCounterDataForCurrentUser();
+
+    await loadShopsFromSupabase();
+
+    await loadMedalTransactions();
+
+    await loadRecordsFromSupabase();
+
+    render();
+    restoreCurrentPlayBackup();
+
+}else{
+
+    authScreen.style.display = "block";
+    appScreen.style.display = "none";
+
+    shops = [];
+    records = [];
+    medalTransactions = [];
+    selectedShopId = null;
+    currentPlayData = null;
+    currentUserId = null;
+    counterProfiles = [];
+    activeCounterProfile = 0;
+    counterData = {};
+}
+}
+
+
+supabaseClient.auth.onAuthStateChange((event) => {
+    if(event === "PASSWORD_RECOVERY"){
+        document.getElementById("authScreen").style.display = "block";
+        document.getElementById("appScreen").style.display = "none";
+        document.getElementById("newPasswordArea").style.display = "block";
+        return;
+    }
+
+    setTimeout(refreshSession, 0);
+});
+
+
+refreshSession();
+</script>
 </body>
 </html>
