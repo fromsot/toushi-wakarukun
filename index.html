@@ -73,7 +73,7 @@
 ログアウト
 </button>
 
-<div class="card">
+<div class="card home-dashboard-card">
 <h2>ホーム</h2>
 
 <p style="font-size:14px;color:#666;">
@@ -87,7 +87,7 @@
 <div class="home-grid">
 
     <div
-    class="menu-card"
+    class="menu-card menu-play"
     onclick="showSection('playSection')"
     >
         <div class="menu-icon">🎰</div>
@@ -97,7 +97,7 @@
     </div>
 
     <div
-    class="menu-card"
+    class="menu-card menu-counter"
     onclick="showSection('counterSection')"
     >
         <div class="menu-icon">🔢</div>
@@ -107,7 +107,7 @@
     </div>
 
     <div
-    class="menu-card"
+    class="menu-card menu-shop-register"
     onclick="showSection('shopSection')"
     >
         <div class="menu-icon">🏪</div>
@@ -117,7 +117,7 @@
     </div>
 
     <div
-    class="menu-card"
+    class="menu-card menu-analysis"
     onclick="showSection('analysisSection')"
     >
         <div class="menu-icon">📈</div>
@@ -127,7 +127,7 @@
     </div>
 
     <div
-    class="menu-card"
+    class="menu-card menu-shop-manage"
     onclick="openShopManagement()"
     >
         <div class="menu-icon">🏬</div>
@@ -137,7 +137,7 @@
     </div>
 
     <div
-    class="menu-card"
+    class="menu-card menu-memory"
     onclick="openMemories()"
     >
         <div class="menu-icon">📸</div>
@@ -444,7 +444,7 @@ placeholder="機種名"
 
 <div id="currentPlay" style="display:none; margin-top:20px;">
 
-<h3>現在稼働中</h3>
+<h3><span class="play-live-status">● 稼働中</span></h3>
 
 <p>店舗：<span id="currentShop">-</span></p>
 <p>機種：<span id="currentMachine">-</span></p>
@@ -832,24 +832,24 @@ flex-wrap:wrap;
 
 </div>
 
-<nav class="bottom-nav">
+<nav class="bottom-nav" aria-label="メインナビゲーション">
 
-    <button class="bottom-nav-item" onclick="showHome()">
+    <button class="bottom-nav-item active" data-nav="home" onclick="showHome()">
         <span class="bottom-nav-icon">🏠</span>
         <span class="bottom-nav-label">ホーム</span>
     </button>
 
-    <button class="bottom-nav-item" onclick="showSection('playSection')">
+    <button class="bottom-nav-item" data-nav="playSection" onclick="showSection('playSection')">
         <span class="bottom-nav-icon">🎰</span>
         <span class="bottom-nav-label">実戦</span>
     </button>
 
-    <button class="bottom-nav-item" onclick="showSection('counterSection')">
+    <button class="bottom-nav-item" data-nav="counterSection" onclick="showSection('counterSection')">
         <span class="bottom-nav-icon">🔢</span>
         <span class="bottom-nav-label">カウンター</span>
     </button>
 
-    <button class="bottom-nav-item" onclick="showSection('analysisSection')">
+    <button class="bottom-nav-item" data-nav="analysisSection" onclick="showSection('analysisSection')">
         <span class="bottom-nav-icon">📈</span>
         <span class="bottom-nav-label">分析</span>
     </button>
@@ -1589,15 +1589,17 @@ function renderSummary(){
 
     document.getElementById("totalGames").innerText = totalGames;
 
-    document.getElementById("totalProfit").innerText = totalProfit;
+    const totalProfitElement = document.getElementById("totalProfit");
+    totalProfitElement.innerText = `${totalProfit.toLocaleString()}円`;
+    setProfitTone(totalProfitElement, totalProfit);
 
     document.getElementById("totalHours").innerText = totalHours;
 
-    document.getElementById("totalInvestment").innerText = totalInvestment;
+    document.getElementById("totalInvestment").innerText = `${totalInvestment.toLocaleString()}円`;
 
-    document.getElementById("totalRecovery").innerText = totalRecovery;
-    document.getElementById("bestWin").innerText = bestWin;
-    document.getElementById("worstLoss").innerText = worstLoss;
+    document.getElementById("totalRecovery").innerText = `${totalRecovery.toLocaleString()}円`;
+    document.getElementById("bestWin").innerText = `${bestWin.toLocaleString()}円`;
+    document.getElementById("worstLoss").innerText = `${worstLoss.toLocaleString()}円`;
     document.getElementById("recoveryRate").innerText = recoveryRate;
 
     if(incomeType === "hour"){
@@ -1616,6 +1618,14 @@ function renderSummary(){
         document.getElementById("incomeLabel").innerText = "今月の収支";
         document.getElementById("incomeValue").innerText = averageMonthly;
     }
+    const incomeValue = ({
+        hour:averageHourly,
+        day:averageDaily,
+        week:averageWeekly,
+        month:averageMonthly
+    })[incomeType] ?? 0;
+    document.getElementById("incomeValue").innerText = incomeValue.toLocaleString();
+    setProfitTone(document.getElementById("incomeValue"), incomeValue);
 }
 
 function renderShopAnalysis(){
@@ -2179,7 +2189,7 @@ function renderShopManagementList(){
                 <small>レート：${shop.rate}円</small>
             </span>
             <span class="shop-summary-stat"><small>現在の貯メダル</small><strong>${shop.medal.toLocaleString()}枚</strong></span>
-            <span class="shop-summary-stat"><small>現金化可能額</small><strong>${shop.cashableYen.toLocaleString()}円</strong></span>
+            <span class="shop-summary-stat cashable-stat"><small>現金化可能額</small><strong>¥${shop.cashableYen.toLocaleString()}</strong></span>
             <span class="shop-summary-sub">${shop.remainderMedals === 0 ? "端数なし・きれいに現金化できます" : `端数 ${shop.remainderMedals.toLocaleString()}枚　あと${shop.medalsToNextPrize.toLocaleString()}枚で次の${shop.prizeUnit.toLocaleString()}円景品`}</span>
             <span class="shop-summary-arrow">詳細を見る →</span>
         </button>`;
@@ -2875,7 +2885,13 @@ function renderChart(){
             datasets:[{
                 label:"累計収支",
                 data,
-                tension:0.2
+                tension:0.25,
+                borderColor:"#22C55E",
+                backgroundColor:"rgba(34,197,94,.14)",
+                pointBackgroundColor:"#22C55E",
+                pointBorderColor:"#15181D",
+                pointRadius:3,
+                fill:true
             }]
         },
 
@@ -2885,7 +2901,18 @@ function renderChart(){
             plugins:{
                 legend:{
                     display:false
+                },
+                tooltip:{
+                    backgroundColor:"#1C2026",
+                    titleColor:"#F8FAFC",
+                    bodyColor:"#F8FAFC",
+                    borderColor:"#2A3038",
+                    borderWidth:1
                 }
+            },
+            scales:{
+                x:{ ticks:{ color:"#94A3B8" }, grid:{ color:"rgba(148,163,184,.10)" } },
+                y:{ ticks:{ color:"#94A3B8" }, grid:{ color:"rgba(148,163,184,.14)" } }
             }
         }
     });
@@ -2963,11 +2990,12 @@ function renderAssetSummary(){
 
     const today = getLocalDateString(now);
 
-    document.getElementById('todayProfitCard').innerText =
-        records
+    const todayProfit = records
         .filter(r => normalizeDateString(r.date) === today)
-        .reduce((s,r) => s + toNumber(r.profit),0)
-        .toLocaleString();
+        .reduce((s,r) => s + toNumber(r.profit),0);
+    const todayElement = document.getElementById('todayProfitCard');
+    todayElement.innerText = todayProfit.toLocaleString();
+    setProfitTone(todayElement, todayProfit);
 
     const monthStart =
         new Date(
@@ -2976,11 +3004,17 @@ function renderAssetSummary(){
             1
         );
 
-    document.getElementById('monthProfitCard').innerText =
-        records
+    const monthProfit = records
         .filter(r => new Date(r.date) >= monthStart)
-        .reduce((s,r) => s + r.profit,0)
-        .toLocaleString();
+        .reduce((s,r) => s + r.profit,0);
+    const monthElement = document.getElementById('monthProfitCard');
+    monthElement.innerText = monthProfit.toLocaleString();
+    setProfitTone(monthElement, monthProfit);
+}
+
+function setProfitTone(element, value){
+    element.classList.remove("profit", "loss", "profit-zero");
+    element.classList.add(value > 0 ? "profit" : value < 0 ? "loss" : "profit-zero");
 }
 
 function addCounterItem(){
@@ -3764,6 +3798,8 @@ async function deleteSelectedMemory(){
 
 function showHome(){
 
+    setActiveNavigation("home");
+
     const sections = [
         'playSection',
         'shopSection',
@@ -3796,6 +3832,8 @@ function showHome(){
 }
 
 function showSection(sectionId){
+
+    setActiveNavigation(sectionId);
 
     const sections = [
         'playSection',
@@ -3845,6 +3883,16 @@ function showSection(sectionId){
 
         target.scrollIntoView({behavior:'smooth'});
     }
+}
+
+function setActiveNavigation(sectionId){
+    const directSections = ["playSection", "counterSection", "analysisSection"];
+    const activeKey = directSections.includes(sectionId) ? sectionId : sectionId === "home" ? "home" : "";
+    document.querySelectorAll(".bottom-nav-item").forEach(button => {
+        const active = button.dataset.nav === activeKey;
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-current", active ? "page" : "false");
+    });
 }
 
 const SUPABASE_URL = "https://addkjzxqenzbtzfdedup.supabase.co";
