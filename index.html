@@ -136,6 +136,14 @@
         </div>
     </div>
 
+    <div
+    class="menu-card"
+    onclick="openMemories()"
+    >
+        <div class="menu-icon">📸</div>
+        <div class="menu-title">思い出</div>
+    </div>
+
 </div>
 
 <p style="margin-top:20px;">
@@ -338,6 +346,83 @@ min="0"
         <h3>貯メダル増減履歴</h3>
         <div id="shopMedalHistory" class="transaction-list"></div>
     </section>
+</div>
+
+<div class="card" id="memorySection" style="display:none;">
+    <div class="section-heading-row">
+        <div>
+            <p class="eyebrow">写真アルバム</p>
+            <h2>思い出</h2>
+        </div>
+        <button onclick="openMemoryForm()">＋ 追加</button>
+    </div>
+    <div class="memory-filters">
+        <input type="search" id="memorySearch" placeholder="タイトル・店舗・機種・タグを検索" oninput="renderMemoryList()">
+        <select id="memoryCategoryFilter" onchange="renderMemoryList()">
+            <option value="all">すべてのカテゴリ</option>
+            <option value="confirmation">確定・示唆</option>
+            <option value="freeze">フリーズ</option>
+            <option value="premium">プレミア</option>
+            <option value="hot">激アツ</option>
+            <option value="payout">出玉記録</option>
+            <option value="other">その他</option>
+        </select>
+        <label class="memory-favorite-filter"><input type="checkbox" id="memoryFavoriteFilter" onchange="renderMemoryList()"> お気に入りのみ</label>
+        <input type="month" id="memoryMonthFilter" onchange="renderMemoryList()" aria-label="年月で絞り込み">
+    </div>
+    <div id="memoryMessage" class="inline-message" aria-live="polite"></div>
+    <div id="memoryList" class="memory-grid"></div>
+</div>
+
+<div class="card" id="memoryFormSection" style="display:none;">
+    <button class="text-button" onclick="cancelMemoryForm()">← 思い出一覧へ</button>
+    <h2 id="memoryFormTitle">思い出を追加</h2>
+    <p class="section-description">画像は1〜5枚。端末内で軽量化してから非公開Storageへ保存します。</p>
+    <label for="memoryFiles">写真（最大5枚）</label>
+    <input type="file" id="memoryFiles" accept="image/*" multiple onchange="handleMemoryFiles(event)">
+    <div id="memoryImagePreview" class="memory-preview-grid"></div>
+    <label for="memoryTitle">タイトル（任意）</label>
+    <input type="text" id="memoryTitle" maxlength="100" placeholder="例：初めてのフリーズ">
+    <label for="memoryDate">日付</label>
+    <input type="date" id="memoryDate">
+    <label for="memoryShop">店舗（任意）</label>
+    <input type="text" id="memoryShop" list="memoryShopOptions" maxlength="100">
+    <datalist id="memoryShopOptions"></datalist>
+    <label for="memoryMachine">機種（任意）</label>
+    <input type="text" id="memoryMachine" maxlength="100">
+    <label for="memoryCategory">カテゴリ</label>
+    <select id="memoryCategory">
+        <option value="confirmation">確定・示唆</option>
+        <option value="freeze">フリーズ</option>
+        <option value="premium">プレミア</option>
+        <option value="hot">激アツ</option>
+        <option value="payout">出玉記録</option>
+        <option value="other" selected>その他</option>
+    </select>
+    <label for="memoryTags">タグ（カンマ区切り・任意）</label>
+    <input type="text" id="memoryTags" placeholder="例：北斗, 虹トロフィー">
+    <label for="memoryNote">メモ（任意）</label>
+    <textarea id="memoryNote" rows="5"></textarea>
+    <label class="memory-favorite-filter"><input type="checkbox" id="memoryFavorite"> お気に入りにする</label>
+    <button id="memorySaveButton" onclick="saveMemory()">思い出を保存</button>
+    <button class="text-button" onclick="cancelMemoryForm()">キャンセル</button>
+    <div id="memoryFormMessage" class="inline-message" aria-live="polite"></div>
+</div>
+
+<div class="card" id="memoryDetailSection" style="display:none;">
+    <button class="text-button" onclick="openMemories()">← 思い出一覧へ</button>
+    <div id="memoryDetailContent"></div>
+    <div class="detail-actions">
+        <button onclick="editSelectedMemory()">編集</button>
+        <button id="memoryDetailFavoriteButton" class="secondary-button" onclick="toggleSelectedMemoryFavorite()">お気に入り</button>
+    </div>
+    <button class="danger-text-button" onclick="deleteSelectedMemory()">この思い出を削除</button>
+    <div id="memoryDetailMessage" class="inline-message" aria-live="polite"></div>
+</div>
+
+<div id="memoryLightbox" class="memory-lightbox" style="display:none;" onclick="closeMemoryLightbox()">
+    <button type="button" aria-label="閉じる">×</button>
+    <img id="memoryLightboxImage" alt="思い出の拡大画像">
 </div>
 
 <div class="card" id="playSection" style="display:none;">
@@ -3308,6 +3393,375 @@ function toggleManualConfirmationNote(){
     if(type !== "other") input.value = "";
 }
 
+const MEMORY_BUCKET = "memory-images";
+const MAX_MEMORY_IMAGES = 5;
+const MEMORY_MAX_LONG_SIDE = 1800;
+const MEMORY_TARGET_BYTES = 1024 * 1024;
+let memories = [];
+let selectedMemoryId = null;
+let memorySlideIndex = 0;
+let memoryDraftImages = [];
+let memoryRemovedImages = [];
+let editingMemoryId = null;
+
+function memoryCategoryLabel(value){
+    return ({
+        confirmation:"確定・示唆", freeze:"フリーズ", premium:"プレミア",
+        hot:"激アツ", payout:"出玉記録", other:"その他"
+    })[value] || "その他";
+}
+
+function todayLocalDate(){
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+}
+
+function parseMemoryTags(value){
+    return [...new Set(String(value || "").split(/[,、]/).map(tag => tag.trim()).filter(Boolean))].slice(0, 20);
+}
+
+async function openMemories(){
+    showSection("memorySection");
+    setInlineMessage("memoryMessage", "思い出を読み込んでいます…");
+    try{
+        await loadMemories();
+        setInlineMessage("memoryMessage");
+        renderMemoryList();
+    }catch(error){
+        console.error(error);
+        setInlineMessage("memoryMessage", "思い出を取得できませんでした。時間をおいて再度お試しください。", "error");
+    }
+}
+
+async function loadMemories(){
+    if(!currentUserId){ memories = []; return; }
+    const { data: rows, error } = await supabaseClient.from("memories")
+        .select("*").eq("user_id", currentUserId)
+        .order("memory_date", { ascending:false }).order("created_at", { ascending:false });
+    if(error) throw error;
+    if(!rows.length){ memories = []; return; }
+    const ids = rows.map(row => row.id);
+    const [{ data: images, error: imageError }, { data: tags, error: tagError }] = await Promise.all([
+        supabaseClient.from("memory_images").select("*").in("memory_id", ids).order("sort_order"),
+        supabaseClient.from("memory_tags").select("*").in("memory_id", ids).order("tag")
+    ]);
+    if(imageError) throw imageError;
+    if(tagError) throw tagError;
+    const paths = (images || []).map(image => image.storage_path);
+    let signedByPath = new Map();
+    if(paths.length){
+        const { data: signed, error: signError } = await supabaseClient.storage.from(MEMORY_BUCKET).createSignedUrls(paths, 3600);
+        if(signError) throw signError;
+        signedByPath = new Map((signed || []).map(item => [item.path, item.signedUrl]));
+    }
+    memories = rows.map(row => ({
+        ...row,
+        images:(images || []).filter(image => image.memory_id === row.id)
+            .map(image => ({ ...image, url:signedByPath.get(image.storage_path) || "" })),
+        tags:(tags || []).filter(tag => tag.memory_id === row.id).map(tag => tag.tag)
+    }));
+}
+
+function renderMemoryList(){
+    const list = document.getElementById("memoryList");
+    if(!list) return;
+    const query = document.getElementById("memorySearch").value.trim().toLocaleLowerCase("ja");
+    const category = document.getElementById("memoryCategoryFilter").value;
+    const favoriteOnly = document.getElementById("memoryFavoriteFilter").checked;
+    const month = document.getElementById("memoryMonthFilter").value;
+    const filtered = memories.filter(memory => {
+        const haystack = [memory.title, memory.shop_name, memory.machine_name, memory.note, ...(memory.tags || [])]
+            .filter(Boolean).join(" ").toLocaleLowerCase("ja");
+        return (!query || haystack.includes(query))
+            && (category === "all" || memory.category === category)
+            && (!favoriteOnly || memory.is_favorite)
+            && (!month || String(memory.memory_date).startsWith(month));
+    });
+    if(!filtered.length){
+        list.innerHTML = `<div class="memory-empty"><div>📷</div><strong>${memories.length ? "条件に合う思い出はありません" : "まだ思い出はありません"}</strong><p>${memories.length ? "検索条件を変更してください。" : "写真と一緒に大切な記録を残しましょう。"}</p></div>`;
+        return;
+    }
+    list.innerHTML = filtered.map(memory => `
+        <article class="memory-card" onclick="openMemoryDetail('${memory.id}')">
+            <div class="memory-cover">
+                <img src="${escapeHtml(memory.images[0]?.url || "")}" alt="${escapeHtml(memory.title || "思い出")}" loading="lazy">
+                <button class="memory-heart ${memory.is_favorite ? "active" : ""}" aria-label="お気に入り" onclick="event.stopPropagation();toggleMemoryFavorite('${memory.id}')">♥</button>
+                ${memory.images.length > 1 ? `<span class="memory-image-count">▣ ${memory.images.length}</span>` : ""}
+            </div>
+            <div class="memory-card-body">
+                <small>${escapeHtml(memory.memory_date)} ・ ${escapeHtml(memoryCategoryLabel(memory.category))}</small>
+                <strong>${escapeHtml(memory.title || memory.machine_name || "無題の思い出")}</strong>
+                <span>${escapeHtml([memory.shop_name, memory.machine_name].filter(Boolean).join(" / "))}</span>
+            </div>
+        </article>`).join("");
+}
+
+async function toggleMemoryFavorite(id){
+    const memory = memories.find(item => item.id === id);
+    if(!memory) return;
+    const next = !memory.is_favorite;
+    const { error } = await supabaseClient.from("memories").update({ is_favorite:next })
+        .eq("id", id).eq("user_id", currentUserId);
+    if(error){ setInlineMessage("memoryMessage", "お気に入りを更新できませんでした。", "error"); return; }
+    memory.is_favorite = next;
+    renderMemoryList();
+    if(selectedMemoryId === id) renderMemoryDetail();
+}
+
+function populateMemoryShopOptions(){
+    document.getElementById("memoryShopOptions").innerHTML = shops
+        .map(shop => `<option value="${escapeHtml(shop.name)}"></option>`).join("");
+}
+
+function clearMemoryDraftUrls(){
+    memoryDraftImages.forEach(item => item.previewUrl && URL.revokeObjectURL(item.previewUrl));
+    memoryDraftImages = [];
+}
+
+function openMemoryForm(id = null){
+    clearMemoryDraftUrls();
+    memoryRemovedImages = [];
+    editingMemoryId = id;
+    populateMemoryShopOptions();
+    const memory = id ? memories.find(item => item.id === id) : null;
+    document.getElementById("memoryFormTitle").textContent = memory ? "思い出を編集" : "思い出を追加";
+    document.getElementById("memoryFiles").value = "";
+    document.getElementById("memoryTitle").value = memory?.title || "";
+    document.getElementById("memoryDate").value = memory?.memory_date || todayLocalDate();
+    document.getElementById("memoryShop").value = memory?.shop_name || "";
+    document.getElementById("memoryMachine").value = memory?.machine_name || "";
+    document.getElementById("memoryCategory").value = memory?.category || "other";
+    document.getElementById("memoryTags").value = (memory?.tags || []).join(", ");
+    document.getElementById("memoryNote").value = memory?.note || "";
+    document.getElementById("memoryFavorite").checked = Boolean(memory?.is_favorite);
+    setInlineMessage("memoryFormMessage");
+    showSection("memoryFormSection");
+    renderMemoryImagePreview();
+}
+
+function cancelMemoryForm(){
+    clearMemoryDraftUrls();
+    memoryRemovedImages = [];
+    editingMemoryId = null;
+    openMemories();
+}
+
+async function handleMemoryFiles(event){
+    const existingCount = editingMemoryId
+        ? (memories.find(item => item.id === editingMemoryId)?.images.length || 0) - memoryRemovedImages.length
+        : 0;
+    const available = MAX_MEMORY_IMAGES - existingCount - memoryDraftImages.length;
+    const files = [...event.target.files];
+    event.target.value = "";
+    if(files.length > available){
+        setInlineMessage("memoryFormMessage", `画像は合計${MAX_MEMORY_IMAGES}枚までです。`, "error");
+        return;
+    }
+    setInlineMessage("memoryFormMessage", "画像を軽量化しています…");
+    try{
+        for(const file of files){
+            if(!file.type.startsWith("image/")) throw new Error("画像ファイルを選択してください。");
+            const blob = await compressMemoryImage(file);
+            memoryDraftImages.push({ blob, previewUrl:URL.createObjectURL(blob) });
+        }
+        setInlineMessage("memoryFormMessage");
+        renderMemoryImagePreview();
+    }catch(error){
+        setInlineMessage("memoryFormMessage", error.message || "画像を読み込めませんでした。", "error");
+    }
+}
+
+async function compressMemoryImage(file){
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, MEMORY_MAX_LONG_SIDE / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close?.();
+    let quality = 0.84;
+    let blob;
+    do{
+        blob = await new Promise(resolve => canvas.toBlob(resolve, "image/webp", quality));
+        quality -= 0.1;
+    }while(blob && blob.size > MEMORY_TARGET_BYTES && quality >= 0.54);
+    if(!blob) throw new Error("画像を変換できませんでした。");
+    if(blob.size > 2 * 1024 * 1024) throw new Error("画像を十分に軽量化できませんでした。");
+    return blob;
+}
+
+function renderMemoryImagePreview(){
+    const preview = document.getElementById("memoryImagePreview");
+    const memory = editingMemoryId ? memories.find(item => item.id === editingMemoryId) : null;
+    const existing = (memory?.images || []).filter(image => !memoryRemovedImages.some(item => item.id === image.id));
+    const existingHtml = existing.map((image, index) => `
+        <div class="memory-preview-item"><img src="${escapeHtml(image.url)}" alt="既存画像${index+1}"><button type="button" onclick="removeExistingMemoryImage('${image.id}')">×</button>${index === 0 ? "<span>表紙</span>" : ""}</div>`).join("");
+    const draftHtml = memoryDraftImages.map((image, index) => `
+        <div class="memory-preview-item"><img src="${image.previewUrl}" alt="追加画像${index+1}"><button type="button" onclick="removeDraftMemoryImage(${index})">×</button>${!existing.length && index === 0 ? "<span>表紙</span>" : ""}</div>`).join("");
+    preview.innerHTML = existingHtml + draftHtml || "<p class=\"memory-preview-help\">写真を選択するとここに表示されます。</p>";
+}
+
+function removeExistingMemoryImage(id){
+    const memory = memories.find(item => item.id === editingMemoryId);
+    const image = memory?.images.find(item => item.id === id);
+    if(image && !memoryRemovedImages.some(item => item.id === id)) memoryRemovedImages.push(image);
+    renderMemoryImagePreview();
+}
+
+function removeDraftMemoryImage(index){
+    const [removed] = memoryDraftImages.splice(index, 1);
+    if(removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl);
+    renderMemoryImagePreview();
+}
+
+async function saveMemory(){
+    const button = document.getElementById("memorySaveButton");
+    const oldMemory = editingMemoryId ? memories.find(item => item.id === editingMemoryId) : null;
+    const keptImages = (oldMemory?.images || []).filter(image => !memoryRemovedImages.some(item => item.id === image.id));
+    if(keptImages.length + memoryDraftImages.length < 1){
+        setInlineMessage("memoryFormMessage", "写真を1枚以上選択してください。", "error"); return;
+    }
+    const payload = {
+        user_id:currentUserId,
+        title:document.getElementById("memoryTitle").value.trim() || null,
+        memory_date:document.getElementById("memoryDate").value || todayLocalDate(),
+        shop_name:document.getElementById("memoryShop").value.trim() || null,
+        machine_name:document.getElementById("memoryMachine").value.trim() || null,
+        category:document.getElementById("memoryCategory").value,
+        note:document.getElementById("memoryNote").value.trim() || null,
+        is_favorite:document.getElementById("memoryFavorite").checked
+    };
+    const tags = parseMemoryTags(document.getElementById("memoryTags").value);
+    button.disabled = true;
+    button.textContent = "保存中…";
+    setInlineMessage("memoryFormMessage", "情報を保存しています…");
+    let memoryId = editingMemoryId;
+    let createdNew = false;
+    const uploadedPaths = [];
+    try{
+        if(memoryId){
+            const { error } = await supabaseClient.from("memories").update(payload).eq("id", memoryId).eq("user_id", currentUserId);
+            if(error) throw error;
+        }else{
+            const { data, error } = await supabaseClient.from("memories").insert(payload).select("id").single();
+            if(error) throw error;
+            memoryId = data.id;
+            createdNew = true;
+        }
+        const { error: oldTagError } = await supabaseClient.from("memory_tags").delete().eq("memory_id", memoryId).eq("user_id", currentUserId);
+        if(oldTagError) throw oldTagError;
+        if(tags.length){
+            const { error: tagError } = await supabaseClient.from("memory_tags").insert(tags.map(tag => ({ user_id:currentUserId, memory_id:memoryId, tag })));
+            if(tagError) throw tagError;
+        }
+        if(memoryRemovedImages.length){
+            const { error: storageError } = await supabaseClient.storage.from(MEMORY_BUCKET).remove(memoryRemovedImages.map(image => image.storage_path));
+            if(storageError) throw storageError;
+            const { error: deleteError } = await supabaseClient.from("memory_images").delete().in("id", memoryRemovedImages.map(image => image.id)).eq("user_id", currentUserId);
+            if(deleteError) throw deleteError;
+        }
+        setInlineMessage("memoryFormMessage", "画像を保存しています…");
+        const usedOrders = new Set(keptImages.map(image => image.sort_order));
+        for(let index = 0; index < memoryDraftImages.length; index++){
+            const path = `${currentUserId}/${memoryId}/${crypto.randomUUID()}.webp`;
+            const { error: uploadError } = await supabaseClient.storage.from(MEMORY_BUCKET)
+                .upload(path, memoryDraftImages[index].blob, { contentType:"image/webp", upsert:false });
+            if(uploadError) throw uploadError;
+            uploadedPaths.push(path);
+            const sortOrder = [0, 1, 2, 3, 4].find(order => !usedOrders.has(order));
+            usedOrders.add(sortOrder);
+            const { error: rowError } = await supabaseClient.from("memory_images").insert({
+                user_id:currentUserId, memory_id:memoryId, storage_path:path, sort_order:sortOrder
+            });
+            if(rowError) throw rowError;
+        }
+        clearMemoryDraftUrls();
+        memoryRemovedImages = [];
+        editingMemoryId = null;
+        await loadMemories();
+        selectedMemoryId = memoryId;
+        showSection("memoryDetailSection");
+        renderMemoryDetail();
+        setInlineMessage("memoryDetailMessage", "思い出を保存しました。", "success");
+    }catch(error){
+        console.error(error);
+        if(uploadedPaths.length) await supabaseClient.storage.from(MEMORY_BUCKET).remove(uploadedPaths);
+        if(createdNew && memoryId) await supabaseClient.from("memories").delete().eq("id", memoryId).eq("user_id", currentUserId);
+        setInlineMessage("memoryFormMessage", `保存できませんでした: ${error.message}`, "error");
+    }finally{
+        button.disabled = false;
+        button.textContent = "思い出を保存";
+    }
+}
+
+function openMemoryDetail(id){
+    selectedMemoryId = id;
+    memorySlideIndex = 0;
+    showSection("memoryDetailSection");
+    renderMemoryDetail();
+}
+
+function renderMemoryDetail(){
+    const memory = memories.find(item => item.id === selectedMemoryId);
+    if(!memory){ openMemories(); return; }
+    memorySlideIndex = Math.min(memorySlideIndex, Math.max(0, memory.images.length - 1));
+    const image = memory.images[memorySlideIndex];
+    document.getElementById("memoryDetailContent").innerHTML = `
+        <div class="memory-detail-gallery">
+            <button class="memory-gallery-arrow" onclick="changeMemorySlide(-1)" ${memory.images.length < 2 ? "disabled" : ""}>‹</button>
+            <img src="${escapeHtml(image?.url || "")}" alt="${escapeHtml(memory.title || "思い出")}" onclick="openMemoryLightbox()">
+            <button class="memory-gallery-arrow" onclick="changeMemorySlide(1)" ${memory.images.length < 2 ? "disabled" : ""}>›</button>
+        </div>
+        <p class="memory-gallery-position">${memorySlideIndex + 1} / ${memory.images.length}</p>
+        <div class="memory-detail-heading"><div><small>${escapeHtml(memory.memory_date)}</small><h2>${escapeHtml(memory.title || "無題の思い出")}</h2></div><span>${memory.is_favorite ? "♥" : "♡"}</span></div>
+        <p><span class="memory-category-badge">${escapeHtml(memoryCategoryLabel(memory.category))}</span></p>
+        <dl class="memory-detail-meta">
+            <div><dt>店舗</dt><dd>${escapeHtml(memory.shop_name || "なし")}</dd></div>
+            <div><dt>機種</dt><dd>${escapeHtml(memory.machine_name || "なし")}</dd></div>
+            <div><dt>タグ</dt><dd>${memory.tags.length ? memory.tags.map(tag => `<span>#${escapeHtml(tag)}</span>`).join(" ") : "なし"}</dd></div>
+            <div><dt>メモ</dt><dd class="memory-note">${escapeHtml(memory.note || "なし")}</dd></div>
+        </dl>`;
+    document.getElementById("memoryDetailFavoriteButton").textContent = memory.is_favorite ? "お気に入り解除" : "お気に入りに追加";
+}
+
+function changeMemorySlide(direction){
+    const memory = memories.find(item => item.id === selectedMemoryId);
+    if(!memory?.images.length) return;
+    memorySlideIndex = (memorySlideIndex + direction + memory.images.length) % memory.images.length;
+    renderMemoryDetail();
+}
+
+function openMemoryLightbox(){
+    const memory = memories.find(item => item.id === selectedMemoryId);
+    const url = memory?.images[memorySlideIndex]?.url;
+    if(!url) return;
+    document.getElementById("memoryLightboxImage").src = url;
+    document.getElementById("memoryLightbox").style.display = "flex";
+}
+function closeMemoryLightbox(){ document.getElementById("memoryLightbox").style.display = "none"; }
+function editSelectedMemory(){ if(selectedMemoryId) openMemoryForm(selectedMemoryId); }
+async function toggleSelectedMemoryFavorite(){ if(selectedMemoryId) await toggleMemoryFavorite(selectedMemoryId); }
+
+async function deleteSelectedMemory(){
+    const memory = memories.find(item => item.id === selectedMemoryId);
+    if(!memory || !confirm("この思い出と写真を削除しますか？")) return;
+    setInlineMessage("memoryDetailMessage", "削除しています…");
+    try{
+        if(memory.images.length){
+            const { error: storageError } = await supabaseClient.storage.from(MEMORY_BUCKET).remove(memory.images.map(image => image.storage_path));
+            if(storageError) throw storageError;
+        }
+        const { error } = await supabaseClient.from("memories").delete().eq("id", memory.id).eq("user_id", currentUserId);
+        if(error) throw error;
+        selectedMemoryId = null;
+        await openMemories();
+        setInlineMessage("memoryMessage", "思い出を削除しました。", "success");
+    }catch(error){
+        console.error(error);
+        setInlineMessage("memoryDetailMessage", `削除できませんでした: ${error.message}`, "error");
+    }
+}
+
 function showHome(){
 
     const sections = [
@@ -3315,6 +3769,9 @@ function showHome(){
         'shopSection',
         'shopManagementSection',
         'shopDetailSection',
+        'memorySection',
+        'memoryFormSection',
+        'memoryDetailSection',
         'analysisSection',
         'counterSection',
         'shopAnalysisCard',
@@ -3345,6 +3802,9 @@ function showSection(sectionId){
         'shopSection',
         'shopManagementSection',
         'shopDetailSection',
+        'memorySection',
+        'memoryFormSection',
+        'memoryDetailSection',
         'analysisSection',
         'counterSection',
         'shopAnalysisCard',
@@ -3531,6 +3991,10 @@ async function logoutUser(){
 
     if(error){
         alert("ログアウトできませんでした: " + error.message);
+    }else{
+        memories = [];
+        selectedMemoryId = null;
+        clearMemoryDraftUrls();
     }
 }
 
