@@ -1,0 +1,16 @@
+{
+  "name": "収支ワカールくん",
+  "short_name": "収支ワカール",
+  "description": "店舗・貯メダル・稼働収支をまとめて管理できる収支記録アプリ",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0B0D10",
+  "theme_color": "#0B0D10",
+  "icons": [
+    {"src":"icons/app-icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
+    {"src":"icons/app-icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+  ]
+}
