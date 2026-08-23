@@ -302,7 +302,7 @@ min="0"
 
     <div class="detail-actions">
         <button onclick="openShopEditFromDetail()">店舗情報を編集</button>
-        <button class="secondary-button" onclick="showShopOperation('adjust')">残高を修正</button>
+        <button class="secondary-button" onclick="showShopOperation('adjust')">貯メダル数を修正</button>
         <button class="cash-button" onclick="showShopOperation('withdraw')">換金</button>
     </div>
     <button class="danger-text-button" onclick="deleteSelectedShop()">この店舗を削除</button>
@@ -310,7 +310,7 @@ min="0"
     <div id="shopOperationMessage" class="inline-message" aria-live="polite"></div>
 
     <div id="shopAdjustPanel" class="operation-panel" style="display:none;">
-        <h3>貯メダル残高を修正</h3>
+        <h3>貯メダル数を修正</h3>
         <p id="adjustCurrentBalance"></p>
         <label for="adjustNewBalance">修正後の実際の総貯メダル</label>
         <input type="number" id="adjustNewBalance" min="0" step="1" oninput="updateAdjustmentPreview()">
@@ -2091,7 +2091,7 @@ function renderShopManagementList(){
         <button class="shop-summary-card" onclick="openShopDetail('${escapeHtml(shop.id)}')">
             <span class="shop-summary-heading">
                 <strong class="shop-summary-name">${escapeHtml(shop.name)}</strong>
-                <small>${shop.rate}円</small>
+                <small>レート：${shop.rate}円</small>
             </span>
             <span class="shop-summary-stat"><small>現在の貯メダル</small><strong>${shop.medal.toLocaleString()}枚</strong></span>
             <span class="shop-summary-stat"><small>現金化可能額</small><strong>${shop.cashableYen.toLocaleString()}円</strong></span>
