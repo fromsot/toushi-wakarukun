@@ -357,7 +357,7 @@ oninput="updateCurrentPlayDraft()"
 <input
 type="number"
 id="playHours"
-placeholder="稼働時間（空欄は開始時刻から自動計算）"
+placeholder="稼働時間（空欄可）"
 min="0"
 step="0.1"
 oninput="updateCurrentPlayDraft()"
@@ -957,7 +957,7 @@ function mapSupabaseRecord(record){
             : Number(record.replay_limit_snapshot),
         prizeUnitSnapshot: Number(record.prize_unit_snapshot) || 200,
         profit: Number(record.profit) || 0,
-        hours: Number(record.hours) || 0,
+        hours: record.hours === null ? null : Number(record.hours),
         expected:
             record.expected === null
             ? null
@@ -1073,7 +1073,7 @@ async function loadRecordsFromSupabase(){
                 replayLimitSnapshot: null,
                 prizeUnitSnapshot: transaction.prizeUnitSnapshot,
                 profit: transaction.profitEffect,
-                hours: 0,
+                hours: null,
                 expected: null
             };
         });
@@ -1090,7 +1090,8 @@ async function addRecord(updateShopMedal = true){
     const startMedal = Number(document.getElementById("startMedal").value);
     const endMedal = Number(document.getElementById("endMedal").value);
     const cashInvestment = Number(document.getElementById("cashInvestment").value);
-    const hours = Number(document.getElementById("hours").value);
+    const hoursValue = document.getElementById("hours").value;
+    const hours = hoursValue === "" ? null : Number(hoursValue);
     const expectedValue = document.getElementById("expected").value;
     const expected = expectedValue === ""
         ? null
@@ -1110,11 +1111,11 @@ async function addRecord(updateShopMedal = true){
         startMedal < 0 ||
         endMedal < 0 ||
         cashInvestment < 0 ||
-        hours < 0 ||
+        (hours !== null && hours < 0) ||
         !Number.isFinite(startMedal) ||
         !Number.isFinite(endMedal) ||
         !Number.isFinite(cashInvestment) ||
-        !Number.isFinite(hours)
+        (hours !== null && !Number.isFinite(hours))
     ){
         alert("貯メダル・投資額・稼働時間は0以上の数値で入力してください");
         return;
@@ -1316,7 +1317,7 @@ function renderHistory(){
             <td class="${record.profit >= 0 ? 'profit' : 'loss'}">
                 ${Math.floor(record.profit)}
             </td>
-            <td>${record.hours}</td>
+            <td>${record.hours ?? "-"}</td>
             <td>${record.expected ?? "-"}</td>
             <td>${record.sourceType === "play" ? [
                 record.confirmationType && record.confirmationType !== "none"
@@ -1376,7 +1377,7 @@ function renderSummary(){
 
     const totalProfit = records.reduce((sum,r)=>sum+r.profit,0);
 
-    const totalHours = records.reduce((sum,r)=>sum+r.hours,0);
+    const totalHours = records.reduce((sum,r)=>sum+(r.hours ?? 0),0);
 
     const now = new Date();
 
@@ -1393,7 +1394,7 @@ function renderSummary(){
     );
 
     const todayHours = todayRecords.reduce(
-        (sum,r)=>sum+r.hours,
+        (sum,r)=>sum+(r.hours ?? 0),
         0
     );
 
@@ -2518,17 +2519,7 @@ async function finishPlay(){
     const enteredHours =
         document.getElementById("playHours").value;
 
-    const elapsedHours = currentPlayData.startedAt
-        ? Math.max(
-            (Date.now() - new Date(currentPlayData.startedAt).getTime()) /
-            3600000,
-            0
-        )
-        : 0;
-
-    document.getElementById("hours").value = enteredHours === ""
-        ? elapsedHours.toFixed(1)
-        : enteredHours;
+    document.getElementById("hours").value = enteredHours;
 
     document.getElementById("expected").value =
         document.getElementById("playExpected").value;
