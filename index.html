@@ -270,6 +270,28 @@ min="0"
         </div>
     </div>
     <p class="section-description">店舗を選ぶと、詳細・残高修正・換金を確認できます。</p>
+    <div class="shop-management-filters">
+        <label for="shopNameSearch">店名検索</label>
+        <input type="search" id="shopNameSearch" placeholder="店舗名を入力" oninput="renderShopManagementList()">
+
+        <label for="shopRateFilter">レートで絞り込み</label>
+        <select id="shopRateFilter" onchange="renderShopManagementList()">
+            <option value="all">すべてのレート</option>
+            <option value="20">20円</option>
+            <option value="10">10円</option>
+            <option value="5">5円</option>
+            <option value="2.5">2.5円</option>
+            <option value="2">2円</option>
+            <option value="other">その他</option>
+        </select>
+
+        <label for="shopNameSort">並び順</label>
+        <select id="shopNameSort" onchange="renderShopManagementList()">
+            <option value="name_asc">店名順（A→Z・あ→ん）</option>
+            <option value="name_desc">店名順（Z→A・ん→あ）</option>
+        </select>
+    </div>
+    <p id="shopFilterResult" class="filter-result" aria-live="polite"></p>
     <div id="shopManagementMessage" class="inline-message" aria-live="polite"></div>
     <div id="shopList" class="shop-card-list"></div>
 </div>
@@ -1999,6 +2021,7 @@ function applyExchangeEstimate(){
 function renderShopManagementList(){
 
     const list = document.getElementById("shopList");
+    const result = document.getElementById("shopFilterResult");
     list.innerHTML = "";
 
     const shopSelect = document.getElementById("shop");
@@ -2007,7 +2030,15 @@ function renderShopManagementList(){
     <option value="">店舗を選択</option>
 `;
 
+    shops.forEach(shop => {
+        shopSelect.innerHTML += `
+            <option value="${escapeHtml(shop.id)}">
+                ${escapeHtml(shop.name)}
+            </option>`;
+    });
+
     if(shops.length === 0){
+        result.textContent = "";
         list.innerHTML = `
             <div class="shop-empty-state">
                 <div class="shop-empty-icon">🏬</div>
@@ -2017,13 +2048,44 @@ function renderShopManagementList(){
         return;
     }
 
-    shops.forEach((shop,index)=>{
+    const search = normalizeShopSearchText(
+        document.getElementById("shopNameSearch").value
+    );
+    const rateFilter = document.getElementById("shopRateFilter").value;
+    const sortOrder = document.getElementById("shopNameSort").value;
+    const standardRates = [20, 10, 5, 2.5, 2];
+    const matchesRate = shop => {
+        if(rateFilter === "all") return true;
+        if(rateFilter === "other"){
+            return !standardRates.some(rate => Math.abs(rate - shop.rate) < 0.0001);
+        }
+        return Math.abs(Number(rateFilter) - shop.rate) < 0.0001;
+    };
+    const collator = new Intl.Collator("ja", {
+        sensitivity:"base",
+        numeric:true
+    });
+    const visibleShops = shops
+        .filter(shop => !search || normalizeShopSearchText(shop.name).includes(search))
+        .filter(matchesRate)
+        .sort((a,b) => {
+            const compared = collator.compare(a.name, b.name);
+            return sortOrder === "name_desc" ? -compared : compared;
+        });
 
-        shopSelect.innerHTML += `
-            <option value="${escapeHtml(shop.id)}">
-                ${escapeHtml(shop.name)}
-            </option>
-        `;
+    result.textContent = `${visibleShops.length}件 / 全${shops.length}件`;
+
+    if(visibleShops.length === 0){
+        list.innerHTML = `
+            <div class="shop-empty-state">
+                <div class="shop-empty-icon">🔍</div>
+                <h3>条件に一致する店舗はありません</h3>
+                <p>店名またはレートの条件を変更してください。</p>
+            </div>`;
+        return;
+    }
+
+    visibleShops.forEach(shop=>{
 
         list.innerHTML += `
         <button class="shop-summary-card" onclick="openShopDetail('${escapeHtml(shop.id)}')">
@@ -2037,6 +2099,13 @@ function renderShopManagementList(){
             <span class="shop-summary-arrow">詳細を見る →</span>
         </button>`;
     });
+}
+
+function normalizeShopSearchText(value){
+    return String(value || "")
+        .normalize("NFKC")
+        .toLocaleLowerCase("ja")
+        .replace(/\s+/g, "");
 }
 
 function setInlineMessage(id, message = "", type = ""){
