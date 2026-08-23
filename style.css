@@ -237,6 +237,60 @@ body{
     white-space:nowrap;
 }
 
+/* ==============================
+   Mobile SPA screen navigation
+============================== */
+.app-screen-header{
+    position:sticky;
+    top:0;
+    z-index:9000;
+    min-height:58px;
+    margin:0 0 14px;
+    padding:7px 4px;
+    display:grid;
+    grid-template-columns:minmax(76px,1fr) auto minmax(76px,1fr);
+    align-items:center;
+    background:rgba(11,13,16,.94);
+    border-bottom:1px solid rgba(255,255,255,.1);
+    backdrop-filter:blur(16px);
+}
+.app-screen-header[hidden]{ display:none!important; }
+.app-screen-header h1{
+    margin:0;
+    font-size:18px;
+    line-height:1.2;
+    text-align:center;
+    white-space:nowrap;
+}
+.app-back-button{
+    width:auto;
+    min-width:76px;
+    min-height:44px;
+    padding:8px 10px;
+    justify-self:start;
+    border:0;
+    background:transparent;
+    box-shadow:none;
+    color:var(--text-main);
+}
+.app-back-button:hover{ background:var(--bg-secondary);transform:none;filter:none; }
+.app-header-spacer{ min-width:76px; }
+#homeScreen,
+#playSection,#manualRecordCard,#counterSection,#shopSection,#shopManagementSection,
+#shopDetailSection,#analysisSection,#shopAnalysisCard,#machineAnalysisCard,#chartCard,
+#historyCard,#memorySection,#memoryFormSection,#memoryDetailSection,#accountSettingsSection{
+    animation:app-screen-enter 150ms ease-out;
+}
+#homeScreen,#playSection,#counterSection,#shopSection,#shopManagementSection,
+#shopDetailSection,#analysisSection,#memorySection,#memoryFormSection,
+#memoryDetailSection,#accountSettingsSection{
+    min-height:calc(100dvh - 190px);
+}
+@keyframes app-screen-enter{
+    from{ opacity:.35;transform:translateY(5px); }
+    to{ opacity:1;transform:translateY(0); }
+}
+
 .toggle-button{
     background:linear-gradient(135deg,#f5c542,#b7791f);
     color:#111522;

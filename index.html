@@ -87,14 +87,19 @@
 
 <div class="container">
 
+<header id="appScreenHeader" class="app-screen-header" hidden>
+    <button id="appBackButton" class="app-back-button" type="button" onclick="goBack()" aria-label="前の画面へ戻る">← 戻る</button>
+    <h1 id="appScreenTitle">ホーム</h1>
+    <span class="app-header-spacer" aria-hidden="true"></span>
+</header>
 
-<h1>収支ワカールくん</h1>
+<h1 id="appBrandTitle">収支ワカールくん</h1>
 
-<button class="logout-button" onclick="logoutUser()">
+<button id="homeLogoutButton" class="logout-button" onclick="logoutUser()">
 ログアウト
 </button>
 
-<div class="card home-dashboard-card">
+<div class="card home-dashboard-card" id="homeScreen">
 <h2>ホーム</h2>
 
 <p style="font-size:14px;color:#666;">
@@ -326,7 +331,6 @@ min="0"
 </div>
 
 <div class="card" id="shopDetailSection" style="display:none;">
-    <button class="text-button" onclick="closeShopDetail()">← 店舗一覧へ</button>
     <div id="shopDetailContent"></div>
 
     <div class="detail-actions">
@@ -396,7 +400,6 @@ min="0"
 </div>
 
 <div class="card" id="memoryFormSection" style="display:none;">
-    <button class="text-button" onclick="cancelMemoryForm()">← 思い出一覧へ</button>
     <h2 id="memoryFormTitle">思い出を追加</h2>
     <p class="section-description">画像は1〜5枚。端末内で軽量化してから非公開Storageへ保存します。</p>
     <label for="memoryFiles">写真（最大5枚）</label>
@@ -431,7 +434,6 @@ min="0"
 </div>
 
 <div class="card" id="memoryDetailSection" style="display:none;">
-    <button class="text-button" onclick="openMemories()">← 思い出一覧へ</button>
     <div id="memoryDetailContent"></div>
     <div class="detail-actions">
         <button onclick="editSelectedMemory()">編集</button>
@@ -561,7 +563,7 @@ onclick="finishPlay()"
 </div>
 </div>
 
-<div class="card">
+<div class="card" id="manualRecordCard">
 <button class="toggle-button" onclick="toggleManualRecord()">
 手動入力を開く / 閉じる
 </button>
@@ -895,7 +897,7 @@ flex-wrap:wrap;
 
 </nav>
 
-<footer class="app-footer">
+<footer id="appFooter" class="app-footer">
     <button type="button" onclick="showSection('accountSettingsSection')">設定・規約・アカウント削除</button>
     <small>収支ワカールくん</small>
 </footer>
@@ -2158,7 +2160,6 @@ function editShop(index){
     toggleReplayInput();
     document.getElementById("shopSaveButton").innerText = "店舗情報を更新";
     document.getElementById("shopCancelEditButton").style.display = "block";
-    document.getElementById("shopSection").scrollIntoView({ behavior:"smooth" });
 }
 
 function cancelShopEdit(){
@@ -2410,6 +2411,7 @@ function openShopEditFromDetail(){
     const index = shops.findIndex(shop => String(shop.id) === String(selectedShopId));
     if(index < 0) return;
     showSection("shopSection");
+    document.getElementById("appScreenTitle").textContent = "店舗情報編集";
     editShop(index);
 }
 
@@ -3656,6 +3658,7 @@ function openMemoryForm(id = null){
     document.getElementById("memoryFavorite").checked = Boolean(memory?.is_favorite);
     setInlineMessage("memoryFormMessage");
     showSection("memoryFormSection");
+    document.getElementById("appScreenTitle").textContent = memory ? "思い出を編集" : "思い出を追加";
     renderMemoryImagePreview();
 }
 
@@ -4020,100 +4023,81 @@ document.addEventListener("keydown", event => {
     }
 });
 
-function showHome(){
+const APP_SCREENS = {
+    home:{ title:"ホーム", elements:["appBrandTitle", "homeLogoutButton", "homeScreen", "appFooter"], nav:"home", parent:null },
+    play:{ title:"稼働", elements:["playSection", "manualRecordCard"], nav:"playSection", parent:"home" },
+    counter:{ title:"小役カウンター", elements:["counterSection"], nav:"counterSection", parent:"home" },
+    shopRegister:{ title:"店舗登録", elements:["shopSection"], nav:null, parent:"home" },
+    shopManagement:{ title:"店舗管理", elements:["shopManagementSection"], nav:null, parent:"home" },
+    shopDetail:{ title:"店舗詳細", elements:["shopDetailSection"], nav:null, parent:"shopManagement" },
+    analysis:{ title:"収支分析", elements:["analysisSection", "shopAnalysisCard", "machineAnalysisCard", "chartCard", "historyCard"], nav:"analysisSection", parent:"home" },
+    memory:{ title:"思い出", elements:["memorySection"], nav:null, parent:"home" },
+    memoryForm:{ title:"思い出を編集", elements:["memoryFormSection"], nav:null, parent:"memory" },
+    memoryDetail:{ title:"思い出詳細", elements:["memoryDetailSection"], nav:null, parent:"memory" },
+    settings:{ title:"設定・サポート", elements:["accountSettingsSection"], nav:null, parent:"home" }
+};
 
-    setActiveNavigation("home");
+const SECTION_TO_SCREEN = {
+    playSection:"play", counterSection:"counter", shopSection:"shopRegister",
+    shopManagementSection:"shopManagement", shopDetailSection:"shopDetail",
+    analysisSection:"analysis", memorySection:"memory", memoryFormSection:"memoryForm",
+    memoryDetailSection:"memoryDetail", accountSettingsSection:"settings"
+};
 
-    const sections = [
-        'playSection',
-        'shopSection',
-        'shopManagementSection',
-        'shopDetailSection',
-        'memorySection',
-        'memoryFormSection',
-        'memoryDetailSection',
-        'accountSettingsSection',
-        'analysisSection',
-        'counterSection',
-        'shopAnalysisCard',
-        'machineAnalysisCard',
-        'chartCard',
-        'historyCard'
-    ];
+let currentAppScreen = "home";
 
-    sections.forEach(id=>{
+function navigateTo(screenId, { historyMode="push", scroll=true } = {}){
+    const screen = APP_SCREENS[screenId];
+    if(!screen) return;
 
-        const el = document.getElementById(id);
-
-        if(el){
-            el.style.display = 'none';
-        }
+    const allElementIds = [...new Set(Object.values(APP_SCREENS).flatMap(item => item.elements))];
+    allElementIds.forEach(id => {
+        const element = document.getElementById(id);
+        if(element) element.style.display = "none";
+    });
+    screen.elements.forEach(id => {
+        const element = document.getElementById(id);
+        if(element) element.style.display = "block";
     });
 
-    window.scrollTo({
-        top:0,
-        behavior:'smooth'
-    });
+    currentAppScreen = screenId;
+    document.getElementById("appScreenHeader").hidden = screenId === "home";
+    document.getElementById("appScreenTitle").textContent = screen.title;
+    setActiveNavigation(screen.nav || "");
+
+    if(screenId === "analysis"){
+        renderSummary();
+        renderShopAnalysis();
+        renderMachineAnalysis();
+        renderChart();
+        renderHistory();
+    }
+
+    if(historyMode === "replace"){
+        history.replaceState({ appScreenId:screenId }, "", location.href);
+    }else if(historyMode === "push" && history.state?.appScreenId !== screenId){
+        history.pushState({ appScreenId:screenId }, "", location.href);
+    }
+    if(scroll) window.scrollTo({ top:0, behavior:"auto" });
 }
+
+function showHome(){ navigateTo("home"); }
 
 function showSection(sectionId){
-
-    setActiveNavigation(sectionId);
-
-    const sections = [
-        'playSection',
-        'shopSection',
-        'shopManagementSection',
-        'shopDetailSection',
-        'memorySection',
-        'memoryFormSection',
-        'memoryDetailSection',
-        'accountSettingsSection',
-        'analysisSection',
-        'counterSection',
-        'shopAnalysisCard',
-        'machineAnalysisCard',
-        'chartCard',
-        'historyCard'
-    ];
-
-    sections.forEach(id=>{
-
-        const el = document.getElementById(id);
-
-        if(el){
-            el.style.display = 'none';
-        }
-    });
-
-    const target = document.getElementById(sectionId);
-
-    if(target){
-        target.style.display = 'block';
-
-        if(sectionId === 'analysisSection'){
-            [
-                'shopAnalysisCard',
-                'machineAnalysisCard',
-                'chartCard',
-                'historyCard'
-            ].forEach(id=>{
-
-                const el = document.getElementById(id);
-
-                if(el){
-                    el.style.display = 'block';
-                }
-            });
-        }
-
-        target.scrollIntoView({behavior:'smooth'});
-    }
+    const screenId = SECTION_TO_SCREEN[sectionId];
+    if(screenId) navigateTo(screenId);
 }
 
-function setActiveNavigation(sectionId){
-    const directSections = ["playSection", "counterSection", "analysisSection"];
-    const activeKey = directSections.includes(sectionId) ? sectionId : sectionId === "home" ? "home" : "";
+function goBack(){
+    navigateTo(APP_SCREENS[currentAppScreen]?.parent || "home");
+}
+
+window.addEventListener("popstate", event => {
+    const screenId = event.state?.appScreenId;
+    navigateTo(APP_SCREENS[screenId] ? screenId : "home", { historyMode:"none" });
+});
+
+function setActiveNavigation(activeKey){
     document.querySelectorAll(".bottom-nav-item").forEach(button => {
         const active = button.dataset.nav === activeKey;
         button.classList.toggle("active", active);
@@ -4299,6 +4283,10 @@ async function showAppForCurrentSession(){
     const appScreen =
         document.getElementById("appScreen");
 
+    const screenToRestore = appScreen.style.display !== "none" && APP_SCREENS[currentAppScreen]
+        ? currentAppScreen
+        : "home";
+
     if(session){
 
     authScreen.style.display = "none";
@@ -4316,6 +4304,7 @@ async function showAppForCurrentSession(){
 
     render();
     restoreCurrentPlayBackup();
+    navigateTo(screenToRestore, { historyMode:"replace", scroll:false });
 
 }else{
 
