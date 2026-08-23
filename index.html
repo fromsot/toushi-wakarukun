@@ -163,9 +163,16 @@
 
 <input type="text" id="shopEventDays" placeholder="イベント日（例：毎月7日、ゾロ目）">
 
-<input type="text" id="shopResetTendency" placeholder="リセット傾向">
+<label for="shopResetMode">リセット・据え置き傾向</label>
+<select id="shopResetMode" onchange="toggleCarryoverDetail()">
+    <option value="all_reset">全リセ</option>
+    <option value="carryover_possible">据え置きあり</option>
+</select>
 
-<input type="text" id="shopCarryoverTendency" placeholder="据え置き傾向">
+<div id="shopCarryoverDetailArea" style="display:none;">
+    <label for="shopCarryoverTendency">据え置き・リセット傾向の詳細</label>
+    <textarea id="shopCarryoverTendency" rows="3" placeholder="例：メイン系は全リセ、バラエティは末やイベント日は全リセ"></textarea>
+</div>
 
 <textarea id="shopMemo" placeholder="店舗メモ"></textarea>
 
@@ -176,20 +183,27 @@ placeholder="現在の総貯メダル"
 min="0"
 >
 
-<input
-type="number"
-id="shopRate"
-placeholder="レート（例：20）"
-min="0.01"
-step="0.01"
->
+<label for="shopRatePreset">レート</label>
+<select id="shopRatePreset" onchange="toggleCustomShopRate()">
+    <option value="20">20円</option>
+    <option value="10">10円</option>
+    <option value="5">5円</option>
+    <option value="2.5">2.5円</option>
+    <option value="2">2円</option>
+    <option value="other">その他</option>
+</select>
+
+<div id="shopCustomRateArea" style="display:none;">
+    <label for="shopRate">その他のレート</label>
+    <input type="number" id="shopRate" placeholder="レートを入力" min="0.01" step="0.01">
+</div>
 
 <input
 type="number"
 id="rentalValue"
 placeholder="1,000円あたりの貸出枚数（例：46）"
 min="0.01"
-step="0.01"
+step="1"
 >
 
 <input 
@@ -197,7 +211,7 @@ type="number"
 id="exchangeValue"
 placeholder="1,000円あたりの交換枚数（例：52）"
 min="0.01"
-step="0.01"
+step="1"
 >
 
 <label>交換枚数の状態</label>
@@ -1597,6 +1611,22 @@ function toggleReplayInput(){
         : "none";
 }
 
+function toggleCarryoverDetail(){
+    const isCarryover = document.getElementById("shopResetMode").value === "carryover_possible";
+    const area = document.getElementById("shopCarryoverDetailArea");
+    const detail = document.getElementById("shopCarryoverTendency");
+    area.style.display = isCarryover ? "block" : "none";
+    if(!isCarryover) detail.value = "";
+}
+
+function toggleCustomShopRate(){
+    const isCustom = document.getElementById("shopRatePreset").value === "other";
+    const area = document.getElementById("shopCustomRateArea");
+    const input = document.getElementById("shopRate");
+    area.style.display = isCustom ? "block" : "none";
+    if(!isCustom) input.value = "";
+}
+
 async function loadMedalTransactions(){
     if(!currentUserId){
         medalTransactions = [];
@@ -1732,7 +1762,10 @@ async function saveShop(){
 
     const name = document.getElementById("shopName").value.trim();
     const medal = Number(document.getElementById("shopMedal").value);
-    const rate = Number(document.getElementById("shopRate").value);
+    const ratePreset = document.getElementById("shopRatePreset").value;
+    const rate = ratePreset === "other"
+        ? Number(document.getElementById("shopRate").value)
+        : Number(ratePreset);
     const rental = Number(document.getElementById("rentalValue").value);
     const exchange = Number(document.getElementById("exchangeValue").value);
     const exchangeIsEstimated = document.getElementById("exchangeAccuracy").value === "estimated";
@@ -1747,8 +1780,10 @@ async function saveShop(){
         .split(/[、,]/)
         .map(value => value.trim())
         .filter(Boolean);
-    const resetTendency = document.getElementById("shopResetTendency").value.trim();
-    const carryoverTendency = document.getElementById("shopCarryoverTendency").value.trim();
+    const resetMode = document.getElementById("shopResetMode").value;
+    const carryoverTendency = resetMode === "carryover_possible"
+        ? document.getElementById("shopCarryoverTendency").value.trim()
+        : "";
     const memo = document.getElementById("shopMemo").value.trim();
 
     if(!name){
@@ -1806,7 +1841,7 @@ async function saveShop(){
         pworld_url: pworldUrl || null,
         x_url: xUrl || null,
         event_days: eventDays,
-        reset_tendency: resetTendency || null,
+        reset_tendency: resetMode,
         carryover_tendency: carryoverTendency || null,
         memo: memo || null
     };
@@ -1887,12 +1922,29 @@ function editShop(index){
     document.getElementById("shopPworldUrl").value = shop.pworldUrl;
     document.getElementById("shopXUrl").value = shop.xUrl;
     document.getElementById("shopEventDays").value = shop.eventDays.join("、");
-    document.getElementById("shopResetTendency").value = shop.resetTendency;
-    document.getElementById("shopCarryoverTendency").value = shop.carryoverTendency;
+    const knownAllReset = ["all_reset", "全リセ"].includes(shop.resetTendency);
+    const hasCarryover = !knownAllReset && (
+        shop.resetTendency === "carryover_possible" ||
+        Boolean(shop.carryoverTendency) ||
+        Boolean(shop.resetTendency)
+    );
+    document.getElementById("shopResetMode").value = hasCarryover
+        ? "carryover_possible"
+        : "all_reset";
+    document.getElementById("shopCarryoverTendency").value =
+        shop.carryoverTendency ||
+        (hasCarryover && shop.resetTendency !== "carryover_possible" ? shop.resetTendency : "");
+    toggleCarryoverDetail();
     document.getElementById("shopMemo").value = shop.memo;
     document.getElementById("shopMedal").value = shop.medal;
     document.getElementById("shopMedal").disabled = true;
-    document.getElementById("shopRate").value = shop.rate;
+    const presetRates = [20, 10, 5, 2.5, 2];
+    const matchedRate = presetRates.find(rate => Math.abs(rate - shop.rate) < 0.0001);
+    document.getElementById("shopRatePreset").value = matchedRate === undefined
+        ? "other"
+        : String(matchedRate);
+    document.getElementById("shopRate").value = matchedRate === undefined ? shop.rate : "";
+    toggleCustomShopRate();
     document.getElementById("rentalValue").value = shop.rental;
     document.getElementById("exchangeValue").value = shop.exchange;
     document.getElementById("exchangeAccuracy").value = shop.exchangeIsEstimated ? "estimated" : "confirmed";
@@ -1912,15 +1964,19 @@ function cancelShopEdit(){
     document.getElementById("shopMedal").disabled = false;
     [
         "shopName", "shopOfficialUrl", "shopPworldUrl", "shopXUrl",
-        "shopEventDays", "shopResetTendency", "shopCarryoverTendency",
+        "shopEventDays", "shopCarryoverTendency",
         "shopMemo", "shopMedal", "shopRate", "rentalValue", "exchangeValue",
         "replayLimit"
     ].forEach(id => {
         document.getElementById(id).value = "";
     });
     document.getElementById("prizeUnit").value = "unknown";
+    document.getElementById("shopResetMode").value = "all_reset";
+    document.getElementById("shopRatePreset").value = "20";
     document.getElementById("exchangeAccuracy").value = "confirmed";
     document.getElementById("replayType").value = "none";
+    toggleCarryoverDetail();
+    toggleCustomShopRate();
     toggleReplayInput();
     document.getElementById("shopSaveButton").innerText = "店舗登録";
     document.getElementById("shopCancelEditButton").style.display = "none";
@@ -2060,6 +2116,14 @@ function renderShopDetail(){
     const nextText = shop.medalsToNextPrize === 0
         ? "端数なしで交換できます"
         : `あと${shop.medalsToNextPrize.toLocaleString()}枚で次の${shop.prizeUnit.toLocaleString()}円景品`;
+    const resetModeLabel = ["all_reset", "全リセ"].includes(shop.resetTendency)
+        ? "全リセ"
+        : "据え置きあり";
+    const carryoverDetail = shop.carryoverTendency || (
+        !["all_reset", "全リセ", "carryover_possible"].includes(shop.resetTendency)
+            ? shop.resetTendency
+            : ""
+    );
 
     content.innerHTML = `
         <div class="shop-detail-header">
@@ -2082,8 +2146,10 @@ function renderShopDetail(){
         <div class="strategy-card">
             <h3>店舗攻略情報</h3>
             <p><span>イベント日</span>${escapeHtml(shop.eventDays.join("、") || "未登録")}</p>
-            <p><span>リセット傾向</span>${escapeHtml(shop.resetTendency || "未登録")}</p>
-            <p><span>据え置き傾向</span>${escapeHtml(shop.carryoverTendency || "未登録")}</p>
+            <p><span>リセット傾向</span>${resetModeLabel}</p>
+            ${resetModeLabel === "据え置きあり"
+                ? `<p><span>傾向の詳細</span>${escapeHtml(carryoverDetail || "未登録")}</p>`
+                : ""}
             <p><span>メモ</span>${escapeHtml(shop.memo || "未登録")}</p>
             ${links ? `<div class="shop-links">${links}</div>` : ""}
         </div>`;
