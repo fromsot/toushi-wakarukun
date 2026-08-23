@@ -1006,3 +1006,128 @@ th,td{ border-bottom:1px solid var(--border); }
 @media(prefers-reduced-motion:reduce){
     *,*::before,*::after{ scroll-behavior:auto!important;transition:none!important; }
 }
+
+/* Legal, support and account controls */
+.network-status-banner{
+    position:fixed;
+    inset:0 0 auto;
+    z-index:12000;
+    padding:10px 16px;
+    background:#7F1D1D;
+    color:#FEE2E2;
+    text-align:center;
+    font-size:13px;
+    font-weight:700;
+}
+.network-status-banner[hidden]{ display:none; }
+.auth-legal-links{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:6px 12px;
+    margin-top:18px;
+    padding-top:14px;
+    border-top:1px solid var(--border);
+}
+.auth-terms-check{
+    display:flex;
+    align-items:flex-start;
+    gap:8px;
+    margin-top:12px;
+    font-size:12px;
+    line-height:1.5;
+}
+.auth-terms-check input{ width:auto;min-height:auto;margin:3px 0 0; }
+.auth-legal-links .legal-link-button,
+.auth-legal-links a{
+    width:auto;
+    min-height:36px;
+    margin:0;
+    padding:5px;
+    border:0;
+    background:transparent;
+    color:var(--text-secondary);
+    font-size:12px;
+    font-weight:600;
+    text-decoration:underline;
+    box-shadow:none;
+}
+.app-footer{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:6px;
+    padding:10px 0 24px;
+    color:var(--text-secondary);
+}
+.app-footer button{
+    width:auto;
+    min-height:40px;
+    padding:6px 10px;
+    border:0;
+    background:transparent;
+    color:var(--text-secondary);
+    font-size:12px;
+    text-decoration:underline;
+}
+.settings-link-list{ display:grid;gap:10px;margin:18px 0; }
+.settings-contact-link{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:48px;
+    padding:10px 14px;
+    border:1px solid var(--border);
+    border-radius:var(--radius-control);
+    background:var(--bg-secondary);
+    color:var(--text-main)!important;
+    font-weight:700;
+    text-decoration:none;
+}
+.danger-zone{
+    margin-top:26px;
+    padding:16px;
+    border:1px solid rgba(239,68,68,.32);
+    border-radius:var(--radius-card);
+    background:rgba(127,29,29,.1);
+}
+.danger-zone h3{ color:#FCA5A5; }
+.account-delete-check{ display:flex;align-items:flex-start;gap:9px;margin:8px 0 16px; }
+.account-delete-check input{ width:auto;min-height:auto;margin:4px 0 0; }
+.danger-button{ background:var(--danger);color:white; }
+.legal-modal{
+    position:fixed;
+    inset:0;
+    z-index:11000;
+    place-items:center;
+    padding:16px;
+    background:rgba(0,0,0,.82);
+    backdrop-filter:blur(8px);
+}
+.legal-card{
+    position:relative;
+    width:min(100%,620px);
+    max-height:88vh;
+    overflow:auto;
+    padding:26px 20px;
+    border:1px solid var(--border);
+    border-radius:var(--radius-card);
+    background:var(--bg-card);
+    box-shadow:0 24px 70px rgba(0,0,0,.42);
+}
+.legal-close{
+    position:sticky;
+    top:0;
+    float:right;
+    width:44px;
+    min-height:44px;
+    padding:0;
+    border:1px solid var(--border);
+    border-radius:50%;
+    background:var(--bg-secondary);
+}
+.legal-document h2{ border-color:var(--shop-register); }
+.legal-document h3{ margin:24px 0 6px;font-size:16px; }
+.legal-document p{ color:var(--text-secondary);line-height:1.8; }
+.legal-updated{ font-size:12px; }
+.modal-open{ overflow:hidden; }

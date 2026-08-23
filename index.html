@@ -23,6 +23,8 @@
 
 <body>
 
+<div id="networkStatusBanner" class="network-status-banner" hidden role="status" aria-live="polite"></div>
+
 <div id="authScreen" class="auth-screen">
 
     <div class="auth-card">
@@ -53,7 +55,18 @@
             パスワードを再設定
         </button>
 
+        <label class="auth-terms-check">
+            <input type="checkbox" id="authTermsAgreement">
+            新規登録時は利用規約とプライバシーポリシーに同意します
+        </label>
+
         <p id="authMessage"></p>
+
+        <div class="auth-legal-links">
+            <button type="button" class="legal-link-button" onclick="openLegalDocument('privacy')">プライバシーポリシー</button>
+            <button type="button" class="legal-link-button" onclick="openLegalDocument('terms')">利用規約</button>
+            <a href="https://github.com/fromsot/toushi-wakarukun/issues" target="_blank" rel="noopener noreferrer">お問い合わせ</a>
+        </div>
 
         <div id="newPasswordArea" style="display:none;">
             <input
@@ -426,6 +439,24 @@ min="0"
     </div>
     <button class="danger-text-button" onclick="deleteSelectedMemory()">この思い出を削除</button>
     <div id="memoryDetailMessage" class="inline-message" aria-live="polite"></div>
+</div>
+
+<div class="card" id="accountSettingsSection" style="display:none;">
+    <h2>設定・サポート</h2>
+    <div class="settings-link-list">
+        <button class="text-button" onclick="openLegalDocument('privacy')">プライバシーポリシー</button>
+        <button class="text-button" onclick="openLegalDocument('terms')">利用規約</button>
+        <a class="settings-contact-link" href="https://github.com/fromsot/toushi-wakarukun/issues" target="_blank" rel="noopener noreferrer">お問い合わせ・不具合報告</a>
+    </div>
+    <section class="danger-zone">
+        <h3>アカウントとデータの削除</h3>
+        <p>店舗・稼働履歴・貯メダル履歴・カウンター設定・思い出・保存写真をすべて削除します。この操作は取り消せません。</p>
+        <label for="accountDeleteConfirmation">確認のため「削除」と入力してください</label>
+        <input id="accountDeleteConfirmation" type="text" autocomplete="off">
+        <label class="account-delete-check"><input id="accountDeleteAgreement" type="checkbox"> すべてのデータが削除されることを確認しました</label>
+        <button id="accountDeleteButton" class="danger-button" onclick="deleteCurrentAccount()">アカウントを完全に削除</button>
+        <div id="accountDeleteMessage" class="inline-message" aria-live="polite"></div>
+    </section>
 </div>
 
 <div id="memoryLightbox" class="memory-lightbox" style="display:none;" onclick="closeMemoryLightbox()">
@@ -864,6 +895,53 @@ flex-wrap:wrap;
 
 </nav>
 
+<footer class="app-footer">
+    <button type="button" onclick="showSection('accountSettingsSection')">設定・規約・アカウント削除</button>
+    <small>収支ワカールくん</small>
+</footer>
+
+</div>
+
+<div id="legalModal" class="legal-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="legalTitle">
+    <article class="legal-card">
+        <button class="legal-close" onclick="closeLegalDocument()" aria-label="閉じる">×</button>
+        <div id="privacyDocument" class="legal-document" style="display:none;">
+            <h2 id="legalTitle">プライバシーポリシー</h2>
+            <p class="legal-updated">制定日：2026年8月23日</p>
+            <h3>1. 取得する情報</h3>
+            <p>本サービスは、アカウント認証に必要なメールアドレス、ユーザーが入力する店舗情報、稼働記録、収支、貯メダル情報、小役カウンター設定、思い出の文章・タグ・画像を取得します。</p>
+            <h3>2. 利用目的</h3>
+            <p>取得した情報は、本サービスの提供、端末間同期、本人認証、データ保存、不具合対応およびサービス改善のために利用します。</p>
+            <h3>3. 外部サービス</h3>
+            <p>認証・データベース・画像保存にSupabase、Web配信にCloudflare Pagesを利用します。各事業者の取り扱いには、それぞれのプライバシーポリシーが適用されます。</p>
+            <h3>4. 第三者提供</h3>
+            <p>法令に基づく場合を除き、ユーザー情報を本人の同意なく第三者へ販売・提供しません。</p>
+            <h3>5. 保存期間と削除</h3>
+            <p>情報はアカウントが存続する間保存されます。ログイン後の「設定・規約・アカウント削除」から、アカウントおよび保存データを削除できます。</p>
+            <h3>6. 安全管理</h3>
+            <p>通信のHTTPS化とSupabaseのRow Level Securityを利用し、本人以外のデータアクセスを制限します。ただし、インターネット上の安全性を完全に保証するものではありません。</p>
+            <h3>7. お問い合わせ</h3>
+            <p><a href="https://github.com/fromsot/toushi-wakarukun/issues" target="_blank" rel="noopener noreferrer">GitHub Issues</a>からお問い合わせください。</p>
+        </div>
+        <div id="termsDocument" class="legal-document" style="display:none;">
+            <h2 id="legalTitleTerms">利用規約</h2>
+            <p class="legal-updated">制定日：2026年8月23日</p>
+            <h3>1. サービス内容</h3>
+            <p>本サービスは、遊技の店舗情報、稼働内容、収支、貯メダルおよび写真等を個人で記録・分析するための管理ツールです。</p>
+            <h3>2. 禁止事項</h3>
+            <p>不正アクセス、他人のアカウント利用、サービス運営の妨害、法令または公序良俗に反する利用を禁止します。</p>
+            <h3>3. 利用者の責任</h3>
+            <p>入力内容、アカウント情報および端末の管理は利用者自身の責任で行ってください。本サービスは勝利・利益・換金額その他の成果を保証しません。</p>
+            <h3>4. 免責</h3>
+            <p>計算結果や分析結果は参考情報です。店舗の実際の交換条件等を必ず確認してください。障害、通信環境、入力誤り等による損害について、法令上認められる範囲で責任を負いません。</p>
+            <h3>5. データとアカウント</h3>
+            <p>利用者は設定画面からアカウントと保存データを削除できます。削除後の復元はできません。</p>
+            <h3>6. 規約の変更</h3>
+            <p>必要に応じて本規約を変更する場合があります。重要な変更は本サービス上で案内します。</p>
+            <h3>7. お問い合わせ</h3>
+            <p><a href="https://github.com/fromsot/toushi-wakarukun/issues" target="_blank" rel="noopener noreferrer">GitHub Issues</a>からお問い合わせください。</p>
+        </div>
+    </article>
 </div>
 
 <script>
@@ -3853,6 +3931,95 @@ async function deleteSelectedMemory(){
     }
 }
 
+function openLegalDocument(type){
+    const privacy = type === "privacy";
+    document.getElementById("privacyDocument").style.display = privacy ? "block" : "none";
+    document.getElementById("termsDocument").style.display = privacy ? "none" : "block";
+    const modal = document.getElementById("legalModal");
+    modal.setAttribute("aria-labelledby", privacy ? "legalTitle" : "legalTitleTerms");
+    modal.style.display = "grid";
+    document.body.classList.add("modal-open");
+}
+
+function closeLegalDocument(){
+    document.getElementById("legalModal").style.display = "none";
+    document.body.classList.remove("modal-open");
+}
+
+function clearDeletedUserLocalData(userId){
+    [
+        `counterProfiles_${userId}`,
+        `activeCounterProfile_${userId}`,
+        `counterData_${userId}`,
+        `currentPlay_${userId}`,
+        `recordsMigrated_${userId}`
+    ].forEach(key => localStorage.removeItem(key));
+    if(localStorage.getItem("recordsLegacyOwner") === userId){
+        localStorage.removeItem("records");
+        localStorage.removeItem("recordsLegacyOwner");
+    }
+    if(localStorage.getItem("counterLegacyOwner") === userId){
+        ["counterProfiles", "activeCounterProfile", "counterData", "counterLegacyOwner"]
+            .forEach(key => localStorage.removeItem(key));
+    }
+}
+
+async function deleteCurrentAccount(){
+    const confirmation = document.getElementById("accountDeleteConfirmation").value.trim();
+    const agreed = document.getElementById("accountDeleteAgreement").checked;
+    if(confirmation !== "削除" || !agreed){
+        setInlineMessage("accountDeleteMessage", "「削除」と入力し、確認欄をチェックしてください。", "error");
+        return;
+    }
+    if(!confirm("アカウントとすべてのデータを完全に削除します。元に戻せません。実行しますか？")) return;
+    const button = document.getElementById("accountDeleteButton");
+    button.disabled = true;
+    button.textContent = "削除中…";
+    setInlineMessage("accountDeleteMessage", "保存写真を削除しています…");
+    const deletingUserId = currentUserId;
+    try{
+        const { data: imageRows, error: imageError } = await supabaseClient
+            .from("memory_images").select("storage_path").eq("user_id", deletingUserId);
+        if(imageError) throw imageError;
+        const paths = (imageRows || []).map(row => row.storage_path);
+        for(let index = 0; index < paths.length; index += 100){
+            const { error: storageError } = await supabaseClient.storage
+                .from(MEMORY_BUCKET).remove(paths.slice(index, index + 100));
+            if(storageError) throw storageError;
+        }
+        setInlineMessage("accountDeleteMessage", "アカウントデータを削除しています…");
+        const { error: deleteError } = await supabaseClient.rpc("delete_current_user_account");
+        if(deleteError) throw deleteError;
+        clearDeletedUserLocalData(deletingUserId);
+        await supabaseClient.auth.signOut({ scope:"local" });
+        location.reload();
+    }catch(error){
+        console.error("アカウント削除エラー", error);
+        setInlineMessage("accountDeleteMessage", `削除を完了できませんでした: ${error.message}`, "error");
+        button.disabled = false;
+        button.textContent = "アカウントを完全に削除";
+    }
+}
+
+function updateNetworkStatus(){
+    const banner = document.getElementById("networkStatusBanner");
+    if(navigator.onLine){
+        banner.hidden = true;
+        banner.textContent = "";
+    }else{
+        banner.hidden = false;
+        banner.textContent = "オフラインです。入力内容の保存や最新データの取得は、接続回復後にお試しください。";
+    }
+}
+
+window.addEventListener("online", updateNetworkStatus);
+window.addEventListener("offline", updateNetworkStatus);
+document.addEventListener("keydown", event => {
+    if(event.key === "Escape" && document.getElementById("legalModal").style.display !== "none"){
+        closeLegalDocument();
+    }
+});
+
 function showHome(){
 
     setActiveNavigation("home");
@@ -3865,6 +4032,7 @@ function showHome(){
         'memorySection',
         'memoryFormSection',
         'memoryDetailSection',
+        'accountSettingsSection',
         'analysisSection',
         'counterSection',
         'shopAnalysisCard',
@@ -3900,6 +4068,7 @@ function showSection(sectionId){
         'memorySection',
         'memoryFormSection',
         'memoryDetailSection',
+        'accountSettingsSection',
         'analysisSection',
         'counterSection',
         'shopAnalysisCard',
@@ -3962,6 +4131,11 @@ const supabaseClient = supabase.createClient(
 
 let sessionRefreshPromise = null;
 
+function getPublicAppUrl(){
+    if(location.protocol === "https:") return `${location.origin}${location.pathname}`;
+    return "https://shushi-wakarukun.pages.dev/";
+}
+
 function refreshSession(){
 
     if(sessionRefreshPromise){
@@ -3999,10 +4173,16 @@ async function signupUser(){
         return;
     }
 
+    if(!document.getElementById("authTermsAgreement").checked){
+        message.innerText = "新規登録には利用規約とプライバシーポリシーへの同意が必要です";
+        return;
+    }
+
     const { error } =
         await supabaseClient.auth.signUp({
             email,
-            password
+            password,
+            options:{ emailRedirectTo:getPublicAppUrl() }
         });
 
     if(error){
@@ -4062,7 +4242,9 @@ async function resetPassword(){
     }
 
     const { error } =
-        await supabaseClient.auth.resetPasswordForEmail(email);
+        await supabaseClient.auth.resetPasswordForEmail(email, {
+            redirectTo:getPublicAppUrl()
+        });
 
     message.innerText = error
         ? "再設定エラー: " + error.message
@@ -4172,6 +4354,7 @@ if("serviceWorker" in navigator){
     });
 }
 
+updateNetworkStatus();
 refreshSession();
 </script>
 </body>
