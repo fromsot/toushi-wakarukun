@@ -3606,22 +3606,69 @@ async function handleMemoryFiles(event){
 }
 
 async function compressMemoryImage(file){
-    const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, MEMORY_MAX_LONG_SIDE / Math.max(bitmap.width, bitmap.height));
+    const source = await loadMemoryImageSource(file);
+    const scale = Math.min(1, MEMORY_MAX_LONG_SIDE / Math.max(source.width, source.height));
     const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-    canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    bitmap.close?.();
+    canvas.width = Math.max(1, Math.round(source.width * scale));
+    canvas.height = Math.max(1, Math.round(source.height * scale));
+    canvas.getContext("2d").drawImage(source.image, 0, 0, canvas.width, canvas.height);
+    source.cleanup();
     let quality = 0.84;
     let blob;
     do{
         blob = await new Promise(resolve => canvas.toBlob(resolve, "image/webp", quality));
         quality -= 0.1;
     }while(blob && blob.size > MEMORY_TARGET_BYTES && quality >= 0.54);
-    if(!blob) throw new Error("画像を変換できませんでした。");
+    if(!blob){
+        blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.78));
+    }
+    if(!blob) throw new Error("この写真形式を変換できませんでした。iPhoneの共有からJPEGで保存して再度お試しください。");
     if(blob.size > 2 * 1024 * 1024) throw new Error("画像を十分に軽量化できませんでした。");
     return blob;
+}
+
+async function loadMemoryImageSource(file){
+    if(typeof createImageBitmap === "function"){
+        try{
+            const bitmap = await createImageBitmap(file, { imageOrientation:"from-image" });
+            return {
+                image:bitmap,
+                width:bitmap.width,
+                height:bitmap.height,
+                cleanup:() => bitmap.close?.()
+            };
+        }catch(error){
+            console.warn("createImageBitmapで写真を開けないためSafari互換処理へ切り替えます", error);
+        }
+    }
+    const objectUrl = URL.createObjectURL(file);
+    try{
+        const image = await new Promise((resolve, reject) => {
+            const element = new Image();
+            element.onload = () => resolve(element);
+            element.onerror = () => reject(new Error("この写真形式を読み込めませんでした。JPEGまたはPNGでお試しください。"));
+            element.src = objectUrl;
+        });
+        return {
+            image,
+            width:image.naturalWidth,
+            height:image.naturalHeight,
+            cleanup:() => URL.revokeObjectURL(objectUrl)
+        };
+    }catch(error){
+        URL.revokeObjectURL(objectUrl);
+        throw error;
+    }
+}
+
+function createMemoryFileId(){
+    if(typeof crypto.randomUUID === "function") return crypto.randomUUID();
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = [...bytes].map(value => value.toString(16).padStart(2, "0"));
+    return `${hex.slice(0,4).join("")}-${hex.slice(4,6).join("")}-${hex.slice(6,8).join("")}-${hex.slice(8,10).join("")}-${hex.slice(10).join("")}`;
 }
 
 function renderMemoryImagePreview(){
@@ -3697,9 +3744,11 @@ async function saveMemory(){
         setInlineMessage("memoryFormMessage", "画像を保存しています…");
         const usedOrders = new Set(keptImages.map(image => image.sort_order));
         for(let index = 0; index < memoryDraftImages.length; index++){
-            const path = `${currentUserId}/${memoryId}/${crypto.randomUUID()}.webp`;
+            const imageBlob = memoryDraftImages[index].blob;
+            const extension = imageBlob.type === "image/webp" ? "webp" : "jpg";
+            const path = `${currentUserId}/${memoryId}/${createMemoryFileId()}.${extension}`;
             const { error: uploadError } = await supabaseClient.storage.from(MEMORY_BUCKET)
-                .upload(path, memoryDraftImages[index].blob, { contentType:"image/webp", upsert:false });
+                .upload(path, imageBlob, { contentType:imageBlob.type || "image/jpeg", upsert:false });
             if(uploadError) throw uploadError;
             uploadedPaths.push(path);
             const sortOrder = [0, 1, 2, 3, 4].find(order => !usedOrders.has(order));
