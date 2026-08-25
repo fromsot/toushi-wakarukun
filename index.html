@@ -153,6 +153,14 @@
     </div>
 
     <div
+    class="menu-card menu-trend"
+    onclick="openTrendAnalysis()"
+    >
+        <div class="menu-icon">🧠</div>
+        <div class="menu-title">傾向分析</div>
+    </div>
+
+    <div
     class="menu-card menu-shop-manage"
     onclick="openShopManagement()"
     >
@@ -802,6 +810,42 @@ style="padding:10px; border-radius:8px;"
 </table>
  </div>
 
+<div class="card" id="trendAnalysisSection" style="display:none;">
+<div class="trend-heading">
+    <div><p class="eyebrow">あなたの記録から分析</p><h2>傾向分析</h2></div>
+    <span id="trendSampleBadge" class="sample-badge"></span>
+</div>
+<p class="section-description">統計は参考情報です。少ない記録から傾向を断定しません。</p>
+
+<div class="trend-filters">
+    <label>期間<select id="trendPeriodFilter" onchange="renderTrendAnalysis()">
+        <option value="month">今月</option><option value="3months">3か月</option>
+        <option value="6months">半年</option><option value="year">1年</option>
+        <option value="all" selected>全期間</option>
+    </select></label>
+    <label>店舗<select id="trendShopFilter" onchange="renderTrendAnalysis()"><option value="all">全店舗</option></select></label>
+    <label>機種<select id="trendMachineFilter" onchange="renderTrendAnalysis()"><option value="all">全機種</option></select></label>
+</div>
+
+<div class="trend-tabs" role="tablist" aria-label="傾向分析の表示切替">
+    <button class="active" data-trend-tab="summary" onclick="selectTrendTab('summary')">サマリー</button>
+    <button data-trend-tab="machine" onclick="selectTrendTab('machine')">機種別</button>
+    <button data-trend-tab="shop" onclick="selectTrendTab('shop')">店舗別</button>
+    <button data-trend-tab="combination" onclick="selectTrendTab('combination')">店舗×機種</button>
+    <button data-trend-tab="calendar" onclick="selectTrendTab('calendar')">曜日・日付</button>
+    <button data-trend-tab="confirmation" onclick="selectTrendTab('confirmation')">確定・示唆</button>
+    <button data-trend-tab="expected" onclick="selectTrendTab('expected')">期待値</button>
+</div>
+
+<section class="trend-panel active" data-trend-panel="summary"><h3>気になる傾向</h3><div id="trendSummary"></div><h3>最近の傾向</h3><div class="recent-range"><button onclick="setRecentTrendCount(5)">5件</button><button class="active" onclick="setRecentTrendCount(10)">10件</button><button onclick="setRecentTrendCount(20)">20件</button></div><div id="trendRecent"></div></section>
+<section class="trend-panel" data-trend-panel="machine"><div class="trend-panel-heading"><h3>機種別</h3><select id="trendMachineSort" onchange="renderTrendAnalysis()"><option value="profit">累計収支順</option><option value="winRate">勝率順</option><option value="plays">稼働回数順</option><option value="average">平均収支順</option></select></div><div id="trendMachine"></div></section>
+<section class="trend-panel" data-trend-panel="shop"><h3>店舗別</h3><div id="trendShop"></div></section>
+<section class="trend-panel" data-trend-panel="combination"><h3>店舗×機種</h3><div id="trendCombination"></div></section>
+<section class="trend-panel" data-trend-panel="calendar"><h3>曜日別</h3><div id="trendWeekday"></div><h3>日付末尾</h3><div id="trendDateEnding"></div><div class="trend-panel-heading"><h3>末尾日とその他の比較</h3><select id="trendEndingCompare" onchange="renderTrendAnalysis()"><option value="0">0のつく日</option><option value="1">1のつく日</option><option value="2">2のつく日</option><option value="3">3のつく日</option><option value="4">4のつく日</option><option value="5">5のつく日</option><option value="6">6のつく日</option><option value="7" selected>7のつく日</option><option value="8">8のつく日</option><option value="9">9のつく日</option></select></div><div id="trendDateEndingCompare"></div><h3>イベント日との比較</h3><p class="analysis-help">判定可能な登録情報のみを参考集計します。</p><div id="trendEventDay"></div></section>
+<section class="trend-panel" data-trend-panel="confirmation"><h3>確定・示唆</h3><p class="section-description">6確・56確・456確・3以上・2以上・高設定挙動・その他は完全に別集計です。</p><div id="trendConfirmation"></div></section>
+<section class="trend-panel" data-trend-panel="expected"><h3>期待値</h3><div id="trendExpected"></div></section>
+</div>
+
 <div class="card analysis-extra" id="chartCard" style="display:none;">
 
 <h2>累計収支グラフ</h2>
@@ -1444,6 +1488,8 @@ function render(){
 
     renderMachineAnalysis();
 
+    renderTrendAnalysis();
+
     renderChart();
 
     renderShopManagementList();
@@ -1714,6 +1760,304 @@ function renderSummary(){
     })[incomeType] ?? 0;
     document.getElementById("incomeValue").innerText = incomeValue.toLocaleString();
     setProfitTone(document.getElementById("incomeValue"), incomeValue);
+}
+
+const TREND_MIN_SAMPLE = 3;
+const TREND_STRONG_SAMPLE = 10;
+const CONFIRMATION_CATEGORIES = [
+    { key:"setting_6", label:"6確", className:"setting-6" },
+    { key:"setting_5_6", label:"56確", className:"setting-56" },
+    { key:"setting_4_5_6", label:"456確", className:"setting-456" },
+    { key:"setting_3_plus", label:"3以上", className:"setting-3" },
+    { key:"setting_2_plus", label:"2以上", className:"setting-2" },
+    { key:"high_setting_behavior", label:"高設定挙動", className:"high-behavior" },
+    { key:"other", label:"その他", className:"other" }
+];
+let activeTrendTab = "summary";
+let recentTrendCount = 10;
+
+function emptyConfirmationCounts(){
+    return Object.fromEntries(CONFIRMATION_CATEGORIES.map(category => [category.key, 0]));
+}
+
+function trendSampleLevel(count){
+    if(count < TREND_MIN_SAMPLE) return { key:"insufficient", label:"サンプル不足" };
+    if(count < TREND_STRONG_SAMPLE) return { key:"reference", label:"参考傾向" };
+    return { key:"trend", label:"傾向" };
+}
+
+function trendPlayRecords(){
+    return records.filter(record => record.sourceType === "play");
+}
+
+function trendPeriodStart(period, now = new Date()){
+    if(period === "all") return null;
+    if(period === "month") return new Date(now.getFullYear(), now.getMonth(), 1);
+    const months = { "3months":3, "6months":6, year:12 }[period];
+    return new Date(now.getFullYear(), now.getMonth() - months, now.getDate());
+}
+
+function filteredTrendRecords(){
+    const period = document.getElementById("trendPeriodFilter")?.value || "all";
+    const shop = document.getElementById("trendShopFilter")?.value || "all";
+    const machine = document.getElementById("trendMachineFilter")?.value || "all";
+    const start = trendPeriodStart(period);
+    return trendPlayRecords().filter(record => {
+        const date = new Date(`${record.date}T00:00:00`);
+        return (!start || (!Number.isNaN(date.getTime()) && date >= start)) &&
+            (shop === "all" || record.shop === shop) &&
+            (machine === "all" || record.machine === machine);
+    });
+}
+
+function trendConfirmationCounts(sourceRecords){
+    const counts = emptyConfirmationCounts();
+    sourceRecords.forEach(record => {
+        if(Object.hasOwn(counts, record.confirmationType)) counts[record.confirmationType] += 1;
+    });
+    return counts;
+}
+
+function calculateTrendMetrics(sourceRecords){
+    const plays = sourceRecords.length;
+    const wins = sourceRecords.filter(record => record.profit > 0).length;
+    const losses = sourceRecords.filter(record => record.profit < 0).length;
+    const draws = plays - wins - losses;
+    const decided = wins + losses;
+    const totalProfit = sourceRecords.reduce((sum, record) => sum + Number(record.profit || 0), 0);
+    const totalInvestment = sourceRecords.reduce((sum, record) => sum + Number(record.cashInvestment || 0), 0);
+    const hourRecords = sourceRecords.filter(record => record.hours !== null && Number.isFinite(Number(record.hours)));
+    const expectedRecords = sourceRecords.filter(record => record.expected !== null && Number.isFinite(Number(record.expected)));
+    const expectedTotal = expectedRecords.reduce((sum, record) => sum + Number(record.expected), 0);
+    const recent = [...sourceRecords].sort((a,b) => String(b.date).localeCompare(String(a.date))).slice(0, 5);
+    return {
+        plays, wins, losses, draws,
+        winRate: decided ? wins / decided * 100 : 0,
+        totalProfit,
+        averageProfit: plays ? totalProfit / plays : 0,
+        averageInvestment: plays ? totalInvestment / plays : 0,
+        averageHours: hourRecords.length ? hourRecords.reduce((sum, record) => sum + Number(record.hours), 0) / hourRecords.length : null,
+        expectedCount: expectedRecords.length,
+        expectedTotal,
+        expectedAverage: expectedRecords.length ? expectedTotal / expectedRecords.length : null,
+        expectedGap: expectedRecords.reduce((sum, record) => sum + Number(record.profit || 0), 0) - expectedTotal,
+        recentWins:recent.filter(record => record.profit > 0).length,
+        recentLosses:recent.filter(record => record.profit < 0).length,
+        recentProfit:recent.reduce((sum, record) => sum + Number(record.profit || 0), 0),
+        confirmations:trendConfirmationCounts(sourceRecords),
+        sample:trendSampleLevel(plays)
+    };
+}
+
+function groupTrendRecords(sourceRecords, keyResolver){
+    const groups = new Map();
+    sourceRecords.forEach(record => {
+        const key = keyResolver(record);
+        if(!key) return;
+        if(!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(record);
+    });
+    return [...groups.entries()].map(([key, groupRecords]) => ({ key, records:groupRecords, metrics:calculateTrendMetrics(groupRecords) }));
+}
+
+function trendMoney(value){
+    const rounded = Math.round(Number(value) || 0);
+    return `${rounded > 0 ? "+" : ""}${rounded.toLocaleString()}円`;
+}
+
+function trendConfirmationHtml(counts){
+    return `<div class="trend-confirmation-grid">${CONFIRMATION_CATEGORIES.slice(0, 6).map(category => `
+        <div><span class="confirmation-badge ${category.className}">${category.label}</span><strong>${counts[category.key]}回</strong></div>
+    `).join("")}</div>`;
+}
+
+function trendMetricCard(item, subtitle = ""){
+    const metrics = item.metrics;
+    return `<article class="trend-stat-card">
+        <div class="trend-card-title"><h4>${escapeHtml(item.key)}</h4><span class="sample-badge ${metrics.sample.key}">${metrics.plays}件・${metrics.sample.label}</span></div>
+        ${subtitle ? `<p class="trend-card-subtitle">${escapeHtml(subtitle)}</p>` : ""}
+        <div class="trend-stat-grid">
+            <div><span>成績</span><strong>${metrics.wins}勝${metrics.losses}敗${metrics.draws ? `${metrics.draws}分` : ""}</strong></div>
+            <div><span>勝率</span><strong>${metrics.winRate.toFixed(1)}%</strong></div>
+            <div><span>累計収支</span><strong class="${metrics.totalProfit > 0 ? "profit" : metrics.totalProfit < 0 ? "loss" : "profit-zero"}">${trendMoney(metrics.totalProfit)}</strong></div>
+            <div><span>平均収支</span><strong>${trendMoney(metrics.averageProfit)}</strong></div>
+            <div><span>平均投資</span><strong>${Math.round(metrics.averageInvestment).toLocaleString()}円</strong></div>
+            <div><span>平均時間</span><strong>${metrics.averageHours === null ? "なし" : `${metrics.averageHours.toFixed(1)}h`}</strong></div>
+            <div><span>期待値合計</span><strong>${metrics.expectedCount ? trendMoney(metrics.expectedTotal) : "なし"}</strong></div>
+            <div><span>期待値乖離</span><strong>${metrics.expectedCount ? trendMoney(metrics.expectedGap) : "なし"}</strong></div>
+            <div><span>直近成績</span><strong>${metrics.recentWins}勝${metrics.recentLosses}敗</strong></div>
+            <div><span>直近収支</span><strong>${trendMoney(metrics.recentProfit)}</strong></div>
+        </div>${trendConfirmationHtml(metrics.confirmations)}
+    </article>`;
+}
+
+function eventDayLabelsForRecord(record){
+    const shop = shops.find(item =>
+        (record.shopId != null && String(item.id) === String(record.shopId)) ||
+        normalizeShopSearchText(item.name) === normalizeShopSearchText(record.shop)
+    );
+    if(!shop?.eventDays?.length) return [];
+    const match = String(record.date || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(!match) return [];
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+
+    return shop.eventDays.filter(label => {
+        const normalized = String(label || "").normalize("NFKC").replace(/\s+/g, "");
+        if(!normalized) return false;
+        if(normalized.includes("ゾロ目") && (day === 11 || day === 22)) return true;
+        const exactDate = normalized.match(/(\d{1,2})月(\d{1,2})日|(?:^|\D)(\d{1,2})\/(\d{1,2})(?:\D|$)/);
+        if(exactDate){
+            const targetMonth = Number(exactDate[1] || exactDate[3]);
+            const targetDay = Number(exactDate[2] || exactDate[4]);
+            return month === targetMonth && day === targetDay;
+        }
+        const monthlyDay = normalized.match(/(?:毎月)?(\d{1,2})日/);
+        return Boolean(monthlyDay && day === Number(monthlyDay[1]));
+    });
+}
+
+function populateTrendFilters(){
+    const fill = (id, values, firstLabel) => {
+        const select = document.getElementById(id);
+        if(!select) return;
+        const current = select.value;
+        select.innerHTML = `<option value="all">${firstLabel}</option>` + values.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
+        select.value = values.includes(current) ? current : "all";
+    };
+    const playRecords = trendPlayRecords();
+    fill("trendShopFilter", [...new Set(playRecords.map(record => record.shop).filter(Boolean))].sort((a,b) => a.localeCompare(b,"ja")), "全店舗");
+    fill("trendMachineFilter", [...new Set(playRecords.map(record => record.machine).filter(Boolean))].sort((a,b) => a.localeCompare(b,"ja")), "全機種");
+}
+
+function renderTrendSummary(sourceRecords){
+    const target = document.getElementById("trendSummary");
+    const machineGroups = groupTrendRecords(sourceRecords, record => record.machine || "機種不明");
+    const shopGroups = groupTrendRecords(sourceRecords, record => record.shop || "店舗不明");
+    const messages = [];
+    machineGroups.filter(item => item.metrics.plays >= TREND_MIN_SAMPLE && item.metrics.averageProfit > 0 && item.metrics.winRate >= 60)
+        .sort((a,b) => b.metrics.totalProfit - a.metrics.totalProfit).slice(0,2)
+        .forEach(item => messages.push({ icon:"📈", title:"好調の参考傾向", text:`${item.key}は${item.metrics.plays}戦${item.metrics.wins}勝、累計${trendMoney(item.metrics.totalProfit)}です。` }));
+    machineGroups.filter(item => item.metrics.plays >= TREND_MIN_SAMPLE && item.metrics.averageProfit < 0 && item.metrics.winRate <= 40)
+        .sort((a,b) => a.metrics.totalProfit - b.metrics.totalProfit).slice(0,2)
+        .forEach(item => messages.push({ icon:"⚠️", title:"注意したい参考傾向", text:`${item.key}は${item.metrics.plays}戦${item.metrics.losses}敗、累計${trendMoney(item.metrics.totalProfit)}です。` }));
+    shopGroups.forEach(item => {
+        if(item.metrics.confirmations.setting_6 >= 2) messages.push({ icon:"🏆", title:"6確実績", text:`${item.key}では6確が${item.metrics.confirmations.setting_6}回記録されています。` });
+        if(item.metrics.confirmations.setting_4_5_6 >= 2) messages.push({ icon:"🎯", title:"456確実績", text:`${item.key}では456確が${item.metrics.confirmations.setting_4_5_6}回記録されています。` });
+    });
+    target.innerHTML = messages.length ? `<div class="trend-insight-list">${messages.slice(0,6).map(message => `<article><span>${message.icon}</span><div><strong>${message.title}</strong><p>${escapeHtml(message.text)}</p></div></article>`).join("")}</div>` : '<div class="trend-empty">表示できる参考傾向はまだありません。記録が3件以上になると候補を表示します。</div>';
+}
+
+function renderRecentTrend(sourceRecords){
+    const sorted = [...sourceRecords].sort((a,b) => String(b.date).localeCompare(String(a.date))).slice(0, recentTrendCount);
+    const target = document.getElementById("trendRecent");
+    if(!sorted.length){ target.innerHTML = '<div class="trend-empty">稼働履歴がありません。</div>'; return; }
+    const metrics = calculateTrendMetrics(sorted);
+    target.innerHTML = trendMetricCard({ key:`直近${sorted.length}稼働`, metrics }, "日付の新しい順");
+}
+
+function renderTrendGroup(targetId, groups, sort = null){
+    const target = document.getElementById(targetId);
+    if(sort) groups.sort(sort);
+    if(!groups.length){ target.innerHTML = '<div class="trend-empty">対象データがありません。</div>'; return; }
+    target.innerHTML = `<div class="trend-card-list">${groups.map(item => trendMetricCard(item)).join("")}</div>`;
+}
+
+function renderTrendCalendar(sourceRecords){
+    const weekdays = ["日曜日","月曜日","火曜日","水曜日","木曜日","金曜日","土曜日"];
+    const weekdayGroups = groupTrendRecords(sourceRecords, record => {
+        const date = new Date(`${record.date}T00:00:00`);
+        return Number.isNaN(date.getTime()) ? null : weekdays[date.getDay()];
+    });
+    weekdayGroups.sort((a,b) => ["月曜日","火曜日","水曜日","木曜日","金曜日","土曜日","日曜日"].indexOf(a.key) - ["月曜日","火曜日","水曜日","木曜日","金曜日","土曜日","日曜日"].indexOf(b.key));
+    renderTrendGroup("trendWeekday", weekdayGroups);
+
+    const endingGroups = Array.from({length:10}, (_, ending) => {
+        const matching = sourceRecords.filter(record => Number(String(record.date).slice(-2)) % 10 === ending);
+        return { key:`${ending}のつく日`, records:matching, metrics:calculateTrendMetrics(matching) };
+    });
+    renderTrendGroup("trendDateEnding", endingGroups);
+
+    const selectedEnding = Number(document.getElementById("trendEndingCompare")?.value ?? 7);
+    const selectedEndingRecords = sourceRecords.filter(record => Number(String(record.date).slice(-2)) % 10 === selectedEnding);
+    const otherEndingRecords = sourceRecords.filter(record => Number(String(record.date).slice(-2)) % 10 !== selectedEnding);
+    renderTrendGroup("trendDateEndingCompare", [
+        { key:`${selectedEnding}のつく日`, records:selectedEndingRecords, metrics:calculateTrendMetrics(selectedEndingRecords) },
+        { key:"その他の日", records:otherEndingRecords, metrics:calculateTrendMetrics(otherEndingRecords) }
+    ]);
+
+    const eventRecords = sourceRecords.filter(record => eventDayLabelsForRecord(record).length);
+    const normalRecords = sourceRecords.filter(record => !eventDayLabelsForRecord(record).length);
+    renderTrendGroup("trendEventDay", [
+        { key:"判定可能なイベント日", records:eventRecords, metrics:calculateTrendMetrics(eventRecords) },
+        { key:"その他の日", records:normalRecords, metrics:calculateTrendMetrics(normalRecords) }
+    ]);
+}
+
+function rankedConfirmationRows(sourceRecords, category, resolver){
+    return groupTrendRecords(sourceRecords.filter(record => record.confirmationType === category.key), resolver)
+        .map(item => ({ key:item.key, count:item.records.length })).sort((a,b) => b.count - a.count || a.key.localeCompare(b.key,"ja"));
+}
+
+function renderTrendConfirmation(sourceRecords){
+    const target = document.getElementById("trendConfirmation");
+    const counts = trendConfirmationCounts(sourceRecords);
+    target.innerHTML = `<div class="confirmation-category-list">${CONFIRMATION_CATEGORIES.map(category => {
+        const shopsRanked = rankedConfirmationRows(sourceRecords, category, record => record.shop || "店舗不明");
+        const machinesRanked = rankedConfirmationRows(sourceRecords, category, record => record.machine || "機種不明");
+        const weekdayNames = ["日","月","火","水","木","金","土"];
+        const weekdaysRanked = rankedConfirmationRows(sourceRecords, category, record => {
+            const date = new Date(`${record.date}T00:00:00`); return Number.isNaN(date.getTime()) ? null : `${weekdayNames[date.getDay()]}曜日`;
+        });
+        const rows = values => values.length ? values.slice(0,5).map(value => `<li><span>${escapeHtml(value.key)}</span><strong>${value.count}回</strong></li>`).join("") : '<li class="muted">記録なし</li>';
+        return `<article class="confirmation-category-card"><div class="trend-card-title"><span class="confirmation-badge ${category.className}">${category.label}</span><strong>${counts[category.key]}回</strong></div><div class="confirmation-rankings"><div><h4>店舗別</h4><ul>${rows(shopsRanked)}</ul></div><div><h4>機種別</h4><ul>${rows(machinesRanked)}</ul></div><div><h4>曜日別</h4><ul>${rows(weekdaysRanked)}</ul></div></div></article>`;
+    }).join("")}</div>`;
+}
+
+function renderTrendExpected(sourceRecords){
+    const expectedRecords = sourceRecords.filter(record => record.expected !== null && Number.isFinite(Number(record.expected)));
+    const target = document.getElementById("trendExpected");
+    if(!expectedRecords.length){ target.innerHTML = '<div class="trend-empty">期待値が入力された稼働はありません。</div>'; return; }
+    const metrics = calculateTrendMetrics(expectedRecords);
+    target.innerHTML = `<article class="trend-stat-card"><div class="trend-card-title"><h4>期待値入力済み稼働</h4><span class="sample-badge ${metrics.sample.key}">${metrics.expectedCount}件・${metrics.sample.label}</span></div><div class="trend-stat-grid"><div><span>期待値合計</span><strong>${trendMoney(metrics.expectedTotal)}</strong></div><div><span>実収支合計</span><strong>${trendMoney(expectedRecords.reduce((sum,record)=>sum+Number(record.profit||0),0))}</strong></div><div><span>乖離額</span><strong>${trendMoney(metrics.expectedGap)}</strong></div><div><span>平均期待値</span><strong>${trendMoney(metrics.expectedAverage)}</strong></div><div><span>稼働回数</span><strong>${metrics.expectedCount}回</strong></div></div></article>`;
+}
+
+function renderTrendAnalysis(){
+    const section = document.getElementById("trendAnalysisSection");
+    if(!section) return;
+    populateTrendFilters();
+    const sourceRecords = filteredTrendRecords();
+    const totalMetrics = calculateTrendMetrics(sourceRecords);
+    const badge = document.getElementById("trendSampleBadge");
+    badge.className = `sample-badge ${totalMetrics.sample.key}`;
+    badge.textContent = `${sourceRecords.length}件・${totalMetrics.sample.label}`;
+    renderTrendSummary(sourceRecords);
+    renderRecentTrend(sourceRecords);
+
+    const machineSort = document.getElementById("trendMachineSort")?.value || "profit";
+    const sorters = { profit:(a,b)=>b.metrics.totalProfit-a.metrics.totalProfit, winRate:(a,b)=>b.metrics.winRate-a.metrics.winRate, plays:(a,b)=>b.metrics.plays-a.metrics.plays, average:(a,b)=>b.metrics.averageProfit-a.metrics.averageProfit };
+    renderTrendGroup("trendMachine", groupTrendRecords(sourceRecords, record => record.machine || "機種不明"), sorters[machineSort]);
+    renderTrendGroup("trendShop", groupTrendRecords(sourceRecords, record => record.shop || "店舗不明"), (a,b)=>b.metrics.plays-a.metrics.plays);
+    renderTrendGroup("trendCombination", groupTrendRecords(sourceRecords, record => `${record.shop || "店舗不明"} × ${record.machine || "機種不明"}`), (a,b)=>b.metrics.plays-a.metrics.plays);
+    renderTrendCalendar(sourceRecords);
+    renderTrendConfirmation(sourceRecords);
+    renderTrendExpected(sourceRecords);
+}
+
+function selectTrendTab(tab){
+    activeTrendTab = tab;
+    document.querySelectorAll("[data-trend-tab]").forEach(button => button.classList.toggle("active", button.dataset.trendTab === tab));
+    document.querySelectorAll("[data-trend-panel]").forEach(panel => panel.classList.toggle("active", panel.dataset.trendPanel === tab));
+}
+
+function setRecentTrendCount(count){
+    recentTrendCount = count;
+    document.querySelectorAll(".recent-range button").forEach(button => button.classList.toggle("active", Number(button.textContent.replace("件","")) === count));
+    renderRecentTrend(filteredTrendRecords());
+}
+
+function openTrendAnalysis(){
+    navigateTo("trendAnalysis");
 }
 
 function renderShopAnalysis(){
@@ -4031,6 +4375,7 @@ const APP_SCREENS = {
     shopManagement:{ title:"店舗管理", elements:["shopManagementSection"], nav:null, parent:"home" },
     shopDetail:{ title:"店舗詳細", elements:["shopDetailSection"], nav:null, parent:"shopManagement" },
     analysis:{ title:"収支分析", elements:["analysisSection", "shopAnalysisCard", "machineAnalysisCard", "chartCard", "historyCard"], nav:"analysisSection", parent:"home" },
+    trendAnalysis:{ title:"傾向分析", elements:["trendAnalysisSection"], nav:null, parent:"home" },
     memory:{ title:"思い出", elements:["memorySection"], nav:null, parent:"home" },
     memoryForm:{ title:"思い出を編集", elements:["memoryFormSection"], nav:null, parent:"memory" },
     memoryDetail:{ title:"思い出詳細", elements:["memoryDetailSection"], nav:null, parent:"memory" },
@@ -4040,7 +4385,7 @@ const APP_SCREENS = {
 const SECTION_TO_SCREEN = {
     playSection:"play", counterSection:"counter", shopSection:"shopRegister",
     shopManagementSection:"shopManagement", shopDetailSection:"shopDetail",
-    analysisSection:"analysis", memorySection:"memory", memoryFormSection:"memoryForm",
+    analysisSection:"analysis", trendAnalysisSection:"trendAnalysis", memorySection:"memory", memoryFormSection:"memoryForm",
     memoryDetailSection:"memoryDetail", accountSettingsSection:"settings"
 };
 
@@ -4071,6 +4416,11 @@ function navigateTo(screenId, { historyMode="push", scroll=true } = {}){
         renderMachineAnalysis();
         renderChart();
         renderHistory();
+    }
+
+    if(screenId === "trendAnalysis"){
+        renderTrendAnalysis();
+        selectTrendTab(activeTrendTab);
     }
 
     if(historyMode === "replace"){
