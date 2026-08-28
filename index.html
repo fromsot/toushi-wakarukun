@@ -18,6 +18,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="lib/calculations.js"></script>
+<script src="lib/legacy-migration.js"></script>
 
 </head>
 
@@ -1241,27 +1244,9 @@ async function loadRecordsFromSupabase(){
         canMigrateLegacy &&
         localStorage.getItem(migrationKey) !== "true"
     ){
-        const migrationRows = legacyRecords.map(record => {
-
-            const matchedShop = shops.find(
-                shop => shop.name === record.shop
-            );
-
-            return {
-                user_id: userId,
-                shop_id: matchedShop?.id || null,
-                shop_name_snapshot: String(record.shop || "未登録店舗"),
-                played_on: record.date,
-                machine: String(record.machine || ""),
-                record_version: 1,
-                cash_investment: toNumber(record.cashInvestment),
-                cashable_delta_yen: toNumber(record.payoutYen),
-                profit: toNumber(record.profit),
-                hours: toNumber(record.hours),
-                expected: record.expected ?? null,
-                legacy_payload: record
-            };
-        });
+        const migrationRows = legacyRecords.map(record =>
+            mapLegacyRecordForSupabase(record, shops, userId)
+        );
 
         const { error: migrationError } =
             await supabaseClient
@@ -1411,14 +1396,10 @@ async function addRecord(updateShopMedal = true){
         return;
     }
 
-    const medalDelta = endMedal - startMedal;
-    const cashLentMedal = cashInvestment / 1000 * rental;
-    const cashableDeltaYen = calculateCashableDeltaYen(
-        medalDelta,
-        exchange,
-        prizeUnit
-    );
-    const profit = cashableDeltaYen - cashInvestment;
+    const financials = calculatePlayFinancials({
+        startMedal, endMedal, cashInvestment, rental, exchange, prizeUnit
+    });
+    const { medalDelta, cashLentMedal, cashableDeltaYen, profit } = financials;
 
     const { data: insertedRecord, error } =
         await supabaseClient.rpc("create_play_record_v2", {
@@ -2779,12 +2760,6 @@ function showShopOperation(type){
     }
 }
 
-function calculateAssetPreview(medal, exchange, prizeUnit){
-    const unitMedals = Math.ceil(exchange * prizeUnit / 1000);
-    const blocks = unitMedals > 0 ? Math.floor(Math.max(medal, 0) / unitMedals) : 0;
-    return { cashableYen: blocks * prizeUnit, unitMedals };
-}
-
 function updateAdjustmentPreview(){
     const shop = selectedShop();
     if(!shop) return;
@@ -3375,18 +3350,6 @@ function normalizeDateString(value){
 
 function toNumber(value){
     return Number(value) || 0;
-}
-
-function calculateCashableDeltaYen(medalDelta,exchange,prizeUnit){
-
-    if(!exchange || exchange <= 0 || !prizeUnit || prizeUnit <= 0){
-        return 0;
-    }
-
-    const direction = Math.sign(medalDelta);
-    const absoluteValue = Math.abs(medalDelta) / exchange * 1000;
-
-    return direction * Math.floor(absoluteValue / prizeUnit) * prizeUnit;
 }
 
 function escapeHtml(value){
@@ -4455,8 +4418,12 @@ function setActiveNavigation(activeKey){
     });
 }
 
-const SUPABASE_URL = "https://addkjzxqenzbtzfdedup.supabase.co";
-const SUPABASE_KEY = "sb_publishable_i6FVjuH06ezYb2DdhbSAfA_YS-a9cLm";
+const SUPABASE_URL = window.__APP_CONFIG__?.supabaseUrl;
+const SUPABASE_KEY = window.__APP_CONFIG__?.supabaseAnonKey;
+
+if(!SUPABASE_URL || !SUPABASE_KEY){
+    throw new Error("Supabase接続設定がありません。config.jsを生成してください。");
+}
 
 const supabaseClient = supabase.createClient(
     SUPABASE_URL,

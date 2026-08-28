@@ -1,0 +1,29 @@
+{
+  "userId": "11111111-1111-1111-1111-111111111111",
+  "shops": [
+    { "id": 10, "name": "テスト店A" },
+    { "id": 20, "name": "テスト店B" }
+  ],
+  "records": [
+    {
+      "date": "2026-08-01",
+      "shop": "テスト店A",
+      "machine": "北斗",
+      "cashInvestment": 4000,
+      "payoutYen": 9500,
+      "profit": 5500,
+      "hours": 2.5,
+      "expected": 3000
+    },
+    {
+      "date": "2026-08-02",
+      "shop": "テスト店B",
+      "machine": "番長",
+      "cashInvestment": 10000,
+      "payoutYen": 0,
+      "profit": -10000,
+      "hours": 4,
+      "expected": null
+    }
+  ]
+}

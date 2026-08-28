@@ -1,6 +1,7 @@
-const CACHE_NAME = "shushi-wakarukun-v5";
+const CACHE_NAME = "shushi-wakarukun-v6";
 const APP_SHELL = [
-    "./", "./index.html", "./style.css", "./manifest.webmanifest",
+    "./", "./index.html", "./style.css", "./config.js",
+    "./lib/calculations.js", "./lib/legacy-migration.js", "./manifest.webmanifest",
     "./icons/icon_no1.png", "./icons/app-icon-192.png",
     "./icons/app-icon-512.png", "./icons/apple-touch-icon.png"
 ];
@@ -21,6 +22,15 @@ self.addEventListener("fetch", event => {
     const isAppFile = url.origin === self.location.origin;
     const isTrustedCdn = url.hostname === "cdn.jsdelivr.net";
     if(!isAppFile && !isTrustedCdn) return;
+
+    if(isAppFile && url.pathname.endsWith("/config.js")){
+        event.respondWith(fetch(event.request).then(response => {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+            return response;
+        }).catch(() => caches.match(event.request)));
+        return;
+    }
 
     if(event.request.mode === "navigate"){
         event.respondWith(fetch(event.request).then(response => {
