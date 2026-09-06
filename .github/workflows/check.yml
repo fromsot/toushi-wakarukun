@@ -1,0 +1,28 @@
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - run: npm ci
+
+      # NEXT_PUBLIC_* はブラウザに配信される公開設定であり秘密情報ではない。
+      # CIではビルドが通ることだけを確認したいので、ダミー値で十分。
+      # 本番の値はVercel/Cloudflare Pages側の環境変数で管理する。
+      - run: npm run check
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key

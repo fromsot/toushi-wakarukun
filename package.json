@@ -5,9 +5,10 @@
   "scripts": {
     "config": "node scripts/generate-config.mjs",
     "lint": "node scripts/lint.mjs",
+    "check-headers": "node scripts/check-vercel-headers.mjs",
     "test": "node --test tests/*.test.js",
     "build": "node scripts/build.mjs",
-    "check": "npm run lint && npm test && npm run build"
+    "check": "npm run lint && npm run check-headers && npm test && npm run build"
   },
   "engines": {
     "node": "22.x"
