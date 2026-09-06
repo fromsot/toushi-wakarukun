@@ -23,7 +23,7 @@ test("PWA設定と必要キャッシュを維持する", () => {
     assert.equal(manifest.display, "standalone");
     assert.ok(manifest.icons.some(icon => icon.sizes === "192x192"));
     assert.ok(manifest.icons.some(icon => icon.sizes === "512x512"));
-    for(const asset of ["config.js", "lib/calculations.js", "lib/legacy-migration.js"]){
+    for(const asset of ["config.js", "lib/calculations.js", "lib/legacy-migration.js", "lib/utils.js"]){
         assert.ok(worker.includes(asset));
     }
 });

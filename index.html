@@ -21,6 +21,7 @@
 <script src="config.js"></script>
 <script src="lib/calculations.js"></script>
 <script src="lib/legacy-migration.js"></script>
+<script src="lib/utils.js"></script>
 
 </head>
 
@@ -1841,11 +1842,6 @@ function groupTrendRecords(sourceRecords, keyResolver){
     return [...groups.entries()].map(([key, groupRecords]) => ({ key, records:groupRecords, metrics:calculateTrendMetrics(groupRecords) }));
 }
 
-function trendMoney(value){
-    const rounded = Math.round(Number(value) || 0);
-    return `${rounded > 0 ? "+" : ""}${rounded.toLocaleString()}円`;
-}
-
 function trendConfirmationHtml(counts){
     return `<div class="trend-confirmation-grid">${CONFIRMATION_CATEGORIES.slice(0, 6).map(category => `
         <div><span class="confirmation-badge ${category.className}">${category.label}</span><strong>${counts[category.key]}回</strong></div>
@@ -2608,13 +2604,6 @@ function renderShopManagementList(){
     });
 }
 
-function normalizeShopSearchText(value){
-    return String(value || "")
-        .normalize("NFKC")
-        .toLocaleLowerCase("ja")
-        .replace(/\s+/g, "");
-}
-
 function setInlineMessage(id, message = "", type = ""){
     const element = document.getElementById(id);
     if(!element) return;
@@ -2798,11 +2787,6 @@ function updateWithdrawalPreview(){
         }
     }
     preview.innerHTML = html + "<br>収支への影響 <strong>±0円</strong>";
-}
-
-function formatSigned(value){
-    const number = Number(value) || 0;
-    return `${number > 0 ? "+" : number === 0 ? "±" : ""}${number.toLocaleString()}`;
 }
 
 async function submitMedalAdjustment(){
@@ -3326,50 +3310,6 @@ function renderChart(){
 }
 
 
-function getLocalDateString(date = new Date()){
-
-    return date.getFullYear() + '-' +
-    String(date.getMonth() + 1).padStart(2,'0') + '-' +
-    String(date.getDate()).padStart(2,'0');
-}
-
-function normalizeDateString(value){
-
-    if(!value){
-        return '';
-    }
-
-    const date = new Date(value);
-
-    if(!isNaN(date.getTime())){
-        return getLocalDateString(date);
-    }
-
-    return String(value).slice(0,10);
-}
-
-function toNumber(value){
-    return Number(value) || 0;
-}
-
-function escapeHtml(value){
-    return String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-}
-
-function safeHttpUrl(value){
-    try{
-        const url = new URL(value);
-        return ["http:", "https:"].includes(url.protocol) ? url.href : "";
-    }catch{
-        return "";
-    }
-}
-
 function renderAssetSummary(){
 
     let totalAsset = 0;
@@ -3790,19 +3730,6 @@ function toggleManualRecord(){
         area.style.display === "none"
         ? "block"
         : "none";
-}
-
-function confirmationLabel(value){
-    return ({
-        none:"なし",
-        setting_6:"6確",
-        setting_5_6:"56確",
-        setting_4_5_6:"456確",
-        setting_3_plus:"3以上",
-        setting_2_plus:"2以上",
-        high_setting_behavior:"高設定挙動",
-        other:"その他"
-    })[value] || "なし";
 }
 
 function togglePlayConfirmationNote(saveDraft = true){

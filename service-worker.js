@@ -1,7 +1,7 @@
-const CACHE_NAME = "shushi-wakarukun-v6";
+const CACHE_NAME = "shushi-wakarukun-v7";
 const APP_SHELL = [
     "./", "./index.html", "./style.css", "./config.js",
-    "./lib/calculations.js", "./lib/legacy-migration.js", "./manifest.webmanifest",
+    "./lib/calculations.js", "./lib/legacy-migration.js", "./lib/utils.js", "./manifest.webmanifest",
     "./icons/icon_no1.png", "./icons/app-icon-192.png",
     "./icons/app-icon-512.png", "./icons/apple-touch-icon.png"
 ];
