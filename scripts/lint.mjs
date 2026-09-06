@@ -7,7 +7,7 @@ const projectDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".
 const html = fs.readFileSync(path.join(projectDir, "index.html"), "utf8");
 const failures = [];
 
-for(const file of ["service-worker.js", "lib/calculations.js", "lib/legacy-migration.js", "lib/utils.js"]){
+for(const file of ["service-worker.js", "lib/calculations.js", "lib/legacy-migration.js", "lib/utils.js", "lib/trend-analysis.js"]){
     try{ new vm.Script(fs.readFileSync(path.join(projectDir, file), "utf8"), { filename:file }); }
     catch(error){ failures.push(error.message); }
 }
@@ -22,7 +22,7 @@ const ids = [...html.matchAll(/\bid=["']([^"']+)["']/g)].map(match => match[1]);
 const duplicateIds = [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))];
 if(duplicateIds.length) failures.push(`重複ID: ${duplicateIds.join(", ")}`);
 
-for(const asset of ["style.css", "config.js", "lib/calculations.js", "lib/legacy-migration.js", "lib/utils.js", "manifest.webmanifest", "service-worker.js"]){
+for(const asset of ["style.css", "config.js", "lib/calculations.js", "lib/legacy-migration.js", "lib/utils.js", "lib/trend-analysis.js", "manifest.webmanifest", "service-worker.js"]){
     if(!html.includes(asset)) failures.push(`参照不足: ${asset}`);
 }
 
