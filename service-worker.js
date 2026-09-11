@@ -1,4 +1,4 @@
-const CACHE_NAME = "shushi-wakarukun-v8";
+const CACHE_NAME = "shushi-wakarukun-v9";
 const APP_SHELL = [
     "./", "./index.html", "./style.css", "./config.js",
     "./lib/calculations.js", "./lib/legacy-migration.js", "./lib/utils.js",

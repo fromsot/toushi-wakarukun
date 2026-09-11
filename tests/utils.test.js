@@ -9,7 +9,8 @@ const {
     getLocalDateString,
     normalizeDateString,
     normalizeShopSearchText,
-    confirmationLabel
+    confirmationLabel,
+    userErrorMessage
 } = require("../lib/utils.js");
 
 test("toNumberは数値化できない値を0にする", () => {
@@ -65,4 +66,11 @@ test("confirmationLabelは未知の値をなしとして扱う", () => {
     assert.equal(confirmationLabel("setting_6"), "6確");
     assert.equal(confirmationLabel("unknown"), "なし");
     assert.equal(confirmationLabel(undefined), "なし");
+});
+
+test("userErrorMessageは通信・認証・オフラインを利用者向け文言へ変換する", () => {
+    assert.equal(userErrorMessage(new Error("Failed to fetch"), "保存失敗", true), "通信に失敗しました。接続を確認して再度お試しください。");
+    assert.equal(userErrorMessage(new Error("JWT expired"), "保存失敗", true), "ログイン状態を確認できませんでした。再ログインしてください。");
+    assert.equal(userErrorMessage(new Error("unknown"), "保存失敗", true), "保存失敗");
+    assert.equal(userErrorMessage(new Error("unknown"), "保存失敗", false), "オフラインです。通信環境を確認して再度お試しください。");
 });

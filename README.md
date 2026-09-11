@@ -2,6 +2,10 @@
 
 店舗・貯メダル・稼働履歴・収支分析を管理する静的PWAです。画面は既存の`index.html`を維持し、認証とユーザーデータ保存にはSupabaseを使用します。
 
+## システム設計資料
+
+SQL、Supabase、公開サーバー、PWA、業務プロセスのつながりは、[`docs/architecture/README.md`](docs/architecture/README.md)から確認できます。人・AI共通の確認資料としてExcel版も同じディレクトリで管理します。
+
 ## ローカル起動
 
 1. `.env.example`を参考に`.env.local`を作成します。

@@ -29,6 +29,10 @@
 <body>
 
 <div id="networkStatusBanner" class="network-status-banner" hidden role="status" aria-live="polite"></div>
+<div id="runtimeStatusBanner" class="network-status-banner runtime-status-banner" hidden role="alert">
+    <span>予期しないエラーが発生しました。入力内容を確認し、もう一度お試しください。</span>
+    <button type="button" onclick="dismissRuntimeError()" aria-label="エラー通知を閉じる">閉じる</button>
+</div>
 
 <div id="authScreen" class="auth-screen">
 
@@ -48,15 +52,15 @@
             placeholder="パスワード"
         >
 
-        <button onclick="loginUser()">
+        <button id="loginButton" onclick="loginUser()">
             ログイン
         </button>
 
-        <button onclick="signupUser()">
+        <button id="signupButton" onclick="signupUser()">
             新規登録
         </button>
 
-        <button onclick="resetPassword()">
+        <button id="resetPasswordButton" onclick="resetPassword()">
             パスワードを再設定
         </button>
 
@@ -79,7 +83,7 @@
             id="newPassword"
             placeholder="新しいパスワード"
             >
-            <button onclick="setNewPassword()">
+            <button id="setNewPasswordButton" onclick="setNewPassword()">
                 新しいパスワードを保存
             </button>
         </div>
@@ -176,11 +180,12 @@
     </div>
 
     <div
-    class="menu-card menu-memory"
-    onclick="openMemories()"
+    class="menu-card menu-memory menu-card-coming-soon"
+    aria-disabled="true"
     >
         <div class="menu-icon">📸</div>
         <div class="menu-title">思い出</div>
+        <div class="coming-soon-label">COMING SOON</div>
     </div>
 
 </div>
@@ -566,12 +571,13 @@ oninput="updateCurrentPlayDraft()"
 <label for="playNote">メモ（任意）</label>
 <textarea id="playNote" class="play-note-input" rows="4" placeholder="その日の実戦で気付いたこと" oninput="updateCurrentPlayDraft()"></textarea>
 
-<button 
+<button id="finishPlayButton"
 style="margin-top:12px; background:green;"
 onclick="finishPlay()"
 >
 稼働終了
 </button>
+<div id="playSaveMessage" class="inline-message" aria-live="polite"></div>
 
 </div>
 </div>
@@ -652,7 +658,8 @@ step="500"
 <label for="playRecordNote">メモ（任意）</label>
 <textarea id="playRecordNote" class="play-note-input" rows="4" placeholder="その日の実戦で気付いたこと"></textarea>
 
-<button onclick="addRecord()">記録する</button>
+<button id="manualRecordSaveButton" onclick="addRecord(true, 'manual')">記録する</button>
+<div id="manualRecordMessage" class="inline-message" aria-live="polite"></div>
 
 </div>
 </div>
@@ -1322,7 +1329,10 @@ async function loadRecordsFromSupabase(){
     return true;
 }
 
-async function addRecord(updateShopMedal = true){
+async function addRecord(updateShopMedal = true, source = "manual"){
+
+    const buttonId = source === "play" ? "finishPlayButton" : "manualRecordSaveButton";
+    const messageId = source === "play" ? "playSaveMessage" : "manualRecordMessage";
 
     const date = document.getElementById("date").value;
     const shopIdValue = document.getElementById("shop").value;
@@ -1403,8 +1413,10 @@ async function addRecord(updateShopMedal = true){
     });
     const { medalDelta, cashLentMedal, cashableDeltaYen, profit } = financials;
 
-    const { data: insertedRecord, error } =
-        await supabaseClient.rpc("create_play_record_v2", {
+    setInlineMessage(messageId, "稼働記録を保存しています…");
+
+    const { data: insertedRecord, error } = await runBusyAction(buttonId, "保存中…", () =>
+        supabaseClient.rpc("create_play_record_v2", {
             p_shop_id: selectedShop?.id || null,
             p_shop_name: shop,
             p_date: date,
@@ -1426,12 +1438,12 @@ async function addRecord(updateShopMedal = true){
             p_confirmation_type: confirmationType,
             p_confirmation_note: confirmationNote,
             p_note: note
-        });
+        })
+    );
 
     if(error){
-        console.error("稼働履歴保存エラー:", error);
-        alert("稼働履歴を保存できませんでした: " + error.message);
-        return;
+        reportActionError(messageId, error, "稼働履歴を保存できませんでした。時間をおいて再度お試しください。");
+        return false;
     }
 
     const savedRecord = Array.isArray(insertedRecord)
@@ -1457,6 +1469,7 @@ async function addRecord(updateShopMedal = true){
     document.getElementById("playRecordNote").value = "";
     toggleManualConfirmationNote();
 
+    setInlineMessage(messageId, "稼働記録を保存しました。", "success");
     return true;
 }
 function render(){
@@ -2521,6 +2534,24 @@ function setBusy(buttonId, busy, busyText){
     }
 }
 
+function reportActionError(messageId, error, fallback){
+    console.error(fallback, error);
+    setInlineMessage(messageId, userErrorMessage(error, fallback), "error");
+}
+
+async function runBusyAction(buttonId, busyText, action){
+    const button = document.getElementById(buttonId);
+    if(button?.disabled) return { data:null, error:new Error("処理中です") };
+    setBusy(buttonId, true, busyText);
+    try{
+        return await action();
+    }catch(error){
+        return { data:null, error };
+    }finally{
+        setBusy(buttonId, false);
+    }
+}
+
 async function openShopManagement(){
     showSection("shopManagementSection");
     setInlineMessage("shopManagementMessage", "最新の店舗情報を読み込んでいます…");
@@ -3051,7 +3082,7 @@ async function finishPlay(){
     document.getElementById("playRecordNote").value =
         document.getElementById("playNote").value;
 
-    const saved = await addRecord(true);
+    const saved = await addRecord(true, "play");
 
     if(!saved){
         return;
@@ -4146,8 +4177,19 @@ function updateNetworkStatus(){
     }
 }
 
+function showRuntimeError(error){
+    console.error("予期しないアプリエラー:", error);
+    document.getElementById("runtimeStatusBanner").hidden = false;
+}
+
+function dismissRuntimeError(){
+    document.getElementById("runtimeStatusBanner").hidden = true;
+}
+
 window.addEventListener("online", updateNetworkStatus);
 window.addEventListener("offline", updateNetworkStatus);
+window.addEventListener("error", event => showRuntimeError(event.error || event.message));
+window.addEventListener("unhandledrejection", event => showRuntimeError(event.reason));
 document.addEventListener("keydown", event => {
     if(event.key === "Escape" && document.getElementById("legalModal").style.display !== "none"){
         closeLegalDocument();
@@ -4303,16 +4345,14 @@ async function signupUser(){
         return;
     }
 
-    const { error } =
-        await supabaseClient.auth.signUp({
-            email,
-            password,
-            options:{ emailRedirectTo:getPublicAppUrl() }
-        });
+    const { error } = await runBusyAction("signupButton", "登録中…", () => supabaseClient.auth.signUp({
+        email,
+        password,
+        options:{ emailRedirectTo:getPublicAppUrl() }
+    }));
 
     if(error){
-        message.innerText =
-            "登録エラー: " + error.message;
+        message.innerText = userErrorMessage(error, "登録できませんでした。入力内容を確認して再度お試しください。");
         return;
     }
 
@@ -4338,15 +4378,12 @@ async function loginUser(){
         return;
     }
 
-    const { error } =
-        await supabaseClient.auth.signInWithPassword({
-            email,
-            password
-        });
+    const { error } = await runBusyAction("loginButton", "ログイン中…", () =>
+        supabaseClient.auth.signInWithPassword({ email, password })
+    );
 
     if(error){
-        message.innerText =
-            "ログインエラー: " + error.message;
+        message.innerText = userErrorMessage(error, "ログインできませんでした。メールアドレスとパスワードを確認してください。");
         return;
     }
 
@@ -4366,13 +4403,12 @@ async function resetPassword(){
         return;
     }
 
-    const { error } =
-        await supabaseClient.auth.resetPasswordForEmail(email, {
-            redirectTo:getPublicAppUrl()
-        });
+    const { error } = await runBusyAction("resetPasswordButton", "送信中…", () =>
+        supabaseClient.auth.resetPasswordForEmail(email, { redirectTo:getPublicAppUrl() })
+    );
 
     message.innerText = error
-        ? "再設定エラー: " + error.message
+        ? userErrorMessage(error, "再設定メールを送信できませんでした。時間をおいて再度お試しください。")
         : "パスワード再設定メールを送信しました。";
 }
 
@@ -4386,10 +4422,12 @@ async function setNewPassword(){
         return;
     }
 
-    const { error } = await supabaseClient.auth.updateUser({ password });
+    const { error } = await runBusyAction("setNewPasswordButton", "保存中…", () =>
+        supabaseClient.auth.updateUser({ password })
+    );
 
     if(error){
-        message.innerText = "再設定エラー: " + error.message;
+        message.innerText = userErrorMessage(error, "パスワードを更新できませんでした。再度お試しください。");
         return;
     }
 
