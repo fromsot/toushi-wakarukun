@@ -27,3 +27,11 @@ test("PWA設定と必要キャッシュを維持する", () => {
         assert.ok(worker.includes(asset));
     }
 });
+
+test("思い出機能はComing Soonとしてホームから起動できない", () => {
+    const memoryMenu = html.match(/<div\s+class="menu-card menu-memory[\s\S]*?<\/div>\s*<\/div>/)?.[0] || "";
+    assert.match(memoryMenu, /menu-card-coming-soon/);
+    assert.match(memoryMenu, /aria-disabled="true"/);
+    assert.match(memoryMenu, /COMING SOON/i);
+    assert.doesNotMatch(memoryMenu, /onclick=/);
+});
